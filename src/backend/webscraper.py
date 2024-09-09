@@ -94,7 +94,7 @@ class WebScraper:
             return None
 
 
-    def find_subpage_links(self, url, html_content):
+    async def find_subpage_links(self, url, html_content):
         """Extract subpage links (e.g., categories, further menus) from a menu page."""
         soup = BeautifulSoup(html_content, 'html.parser')
         parsed_base_url = urlparse(url)
@@ -117,7 +117,7 @@ class WebScraper:
 
         subpage_links = list(OrderedDict.fromkeys(subpage_links))
 
-        subpage_links = self.satisfies_special_characteristics(subpage_links)
+        subpage_links = await self.satisfies_special_characteristics(subpage_links)
 
         return subpage_links
         
@@ -140,7 +140,7 @@ class WebScraper:
             filtered_html = self.filter_html_for_menu(html)
             
             # Extract the menu items using LLM
-            menu_items = llm_.extract_menu_items(filtered_html)
+            menu_items = await llm_.extract_menu_items(filtered_html)
             node.menu_items = menu_items
 
             # Save the extracted menu items in the cache
@@ -204,7 +204,7 @@ class WebScraper:
                 return True
     
 
-    def satisfies_llm_criteria(self, path):
+    async def satisfies_llm_criteria(self, path):
         prompt_gpt4 = f"""
 You are an advanced web scraper assistant. You need to navigate restaurant websites and look for URLs that suggest food-related content such as menus. Your job is to help identify relevant URLs by analyzing their content and returning only those that suggest the page contains a menu or food items.
 
@@ -237,7 +237,7 @@ Respond with "YES" if the URL is relevant, or "NO" if it is not.
             cached_data = json.loads(self.llm_relevance.get_data_by_hash(path))['yes_no']
             return cached_data[0] > cached_data[1]
 
-        responses = self.llm.chat([prompt_gpt35], n = 5)
+        responses = await self.llm.chat([prompt_gpt35], n = 5)
 
         N_YES = 0
         N_NO = 0
@@ -253,7 +253,7 @@ Respond with "YES" if the URL is relevant, or "NO" if it is not.
         
         return N_YES > N_NO
 
-    def satisfies_embedding_criteria(self, urls):
+    async def satisfies_embedding_criteria(self, urls):
         """
         Filters URLs based on their relevance to target keywords and excludes the base path.
         
@@ -279,7 +279,7 @@ Respond with "YES" if the URL is relevant, or "NO" if it is not.
         print(f'Number of Hashed URLs: {len_before - len(urls)}... Percentage loads saved: {100*(len_before - len(urls))/len_before}%')
         
         # Find relevant URLs based on embedding criteria
-        relevant_urls = self.llm.find_url_relevance(urls, target_keywords)
+        relevant_urls = await self.llm.find_url_relevance(urls, target_keywords)
 
         for relevant_url in relevant_urls:
             if self.use_cache:
@@ -292,17 +292,17 @@ Respond with "YES" if the URL is relevant, or "NO" if it is not.
         return [relevant_url[0] for relevant_url in relevant_urls if relevant_url[1]]
     
 
-    def satisfies_special_characteristics(self, paths):
+    async def satisfies_special_characteristics(self, paths):
         if not paths:
             return []
         base_path = 'https://' + urlparse(paths[0]).netloc + '/'
 
         urls = [urlparse(url).path for url in paths]
         
-        urls = self.satisfies_embedding_criteria(urls)
+        urls = await self.satisfies_embedding_criteria(urls)
 
     
-        urls = [path for path in urls if self.satisfies_special_words(path) or self.satisfies_llm_criteria(path)]
+        urls = [path for path in urls if self.satisfies_special_words(path) or await self.satisfies_llm_criteria(path)]
         
         paths = [urljoin(base_path, path) for path in urls]
         print(base_path)

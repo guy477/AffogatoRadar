@@ -53,7 +53,7 @@ class WebCrawler:
             return
 
         # Find subpage links and create child WebNode objects
-        subpage_links = self.scraper.find_subpage_links(normalized_url, html_content)
+        subpage_links = await self.scraper.find_subpage_links(normalized_url, html_content)
 
         for link in subpage_links:
             normalized_link = self.normalize_url(link, base_url=normalized_url)
