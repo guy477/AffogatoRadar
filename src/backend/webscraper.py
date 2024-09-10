@@ -12,8 +12,9 @@ from collections import OrderedDict, deque
 
 
 class WebScraper:
-    def __init__(self, storage_dir: str = "../data", use_cache=True, max_concurrency=10):
+    def __init__(self, storage_dir: str = "../data", use_cache=True, max_concurrency=10, webpage_timeout = 1000):
         self.use_cache = use_cache
+        self.webpage_timeout = webpage_timeout
         self.llm = LLM()
         self.source_dest = LocalStorage(storage_dir, "source_dest.db")
         self.url_to_html = LocalStorage(storage_dir, "url_to_html.db")
@@ -35,7 +36,7 @@ class WebScraper:
         """Initialize Playwright and the browser instance."""
         if not self.playwright:
             self.playwright = await async_playwright().start()
-            self.browser = await self.playwright.webkit.launch(headless=True)
+            self.browser = await self.playwright.firefox.launch(headless=False)
     
     async def stop_playwright(self):
         """Stop the Playwright instance and close the browser."""
@@ -59,21 +60,38 @@ class WebScraper:
         page: Page = await self.browser.new_page()
 
         try:
-            await page.goto(url)
+            # load dynamic content
+            try:
+                await page.goto(url, wait_until='networkidle', timeout=self.webpage_timeout)
+            except Exception as e:
+                # close original page 
+                await page.close()
+
+                # and try again
+                page: Page = await self.browser.new_page()
+                print(f"Error/Timeout 1: {url}") 
+
+            # re-execute
+            await page.goto(url, wait_until='networkidle', timeout=self.webpage_timeout)
+
+            # Wait for any dynamic content to load
+            await asyncio.sleep(1)  
+            # Ensure the page is fully loaded (pointless i'd argue)
             await page.wait_for_selector('body')
+
             final_url = page.url
             html_content = await page.content()
 
             # Cache the final page content
-            if self.use_cache:
-                self.source_dest.save_data(url, final_url)
-                self.url_to_html.save_data(final_url, html_content)
-                print(f"HTML cached for {url}")
+        
+            self.source_dest.save_data(url, final_url)
+            self.url_to_html.save_data(final_url, html_content)
+            print(f"HTML cached for {url}")
                 
             return html_content
 
         except Exception as e:
-            print(f"Error fetching page {url}: {e}")
+            print(f"Error/Timeout 2 {url} (No Data Fetched):\n{e}")
             return None
 
         finally:
@@ -143,18 +161,24 @@ class WebScraper:
         """
         Recursive DFS helper function to process nodes and propagate menu items upwards.
         """
-
+        html = None
+        err_count = 0
         async with self.node_lock:
             # Check if menu items for this URL are already cached
             cached_menu_items = self.url_to_menu.get_data_by_hash(node.url)
 
-        if self.use_cache and cached_menu_items:
+        if self.use_cache and cached_menu_items is not None:
             # print(f"Using cached menu items for {node.url}")
             node.menu_items = json.loads(cached_menu_items)
         else:
             async with self.semaphore:
                 # Fetch the webpage and extract menu items if not cached
-                html = await self.fetch_webpage_with_js(node.url)
+                while not html and err_count < 3:
+                    err_count += 1
+                    html = await self.fetch_webpage_with_js(node.url)
+                if err_count == 3:
+                    print(f"Failed to fetch page {node.url} after 3 attempts.")
+                    return
                 filtered_html = self.filter_html_for_menu(html)
                 
                 # Extract the menu items using LLM
@@ -163,17 +187,16 @@ class WebScraper:
 
                 async with self.node_lock:
                     # Save the extracted menu items in the cache using the node lock
-                    if self.use_cache:
-                        self.url_to_menu.save_data(node.url, json.dumps(menu_items))
-                        print(f"Menu items for {node.url} cached.")
-        
+                    self.url_to_menu.save_data(node.url, json.dumps(menu_items))
+                    print(f"Menu items for {node.url} cached.")
+    
         # Recursively process all child nodes first
         # Create a list of tasks by filtering unvisited children
         tasks = []
         for child in node.children:
             if not await self.is_visited(child.url):  # This needs to be awaited outside the comprehension
                 await self.mark_as_visited(child.url)  # Mark the node as visited
-                tasks.append(self.process_dfs_node(child, node))  # Add the task to the list
+                tasks.append(asyncio.create_task(self.process_dfs_node(child, node)))  # Add the task to the list
 
         # Now gather the tasks and await their completion
         await asyncio.gather(*tasks)
@@ -181,15 +204,15 @@ class WebScraper:
         # After processing all children, propagate the menu items to the parent
         async with self.node_lock:
             for item, ingredients in node.menu_items.items():
-                node.menu_book[item].extend(ingredients)
+                node.menu_book[item].union(ingredients)
 
             if parent:
                 for item, ingredients in node.menu_book.items():
                     # print(f"Propagated {item}: {ingredients} to parent {parent.url}")
-                    parent.menu_book[item].extend(ingredients)
+                    parent.menu_book[item].union(ingredients)
                     
 
-    async def dfs_recursive(self, root_node, max_depth):
+    async def dfs_recursive(self, root_node):
         """
         Perform recursive DFS traversal asynchronously.
         """
@@ -197,7 +220,7 @@ class WebScraper:
         await self.mark_as_visited(root_node.url)
         await self.process_dfs_node(root_node, None)
 
-    async def start_dfs(self, root_node, max_depth=2, openai_model = 'gpt-4o-mini'):
+    async def start_dfs(self, root_node, openai_model = 'gpt-4o-mini', default_max_tokens = 2048):
         """
         Kicks off the DFS recursive traversal.
         Assumes tree is a zero-cycle, directed graph.
@@ -205,33 +228,27 @@ class WebScraper:
 
         # set llm model to provided model
         model_temp = self.llm.model
+        max_tokens_temp = self.llm.max_tokens
         self.llm.set_default_model(openai_model)
+        self.llm.set_default_max_tokens(default_max_tokens)
 
-        await self.dfs_recursive(root_node, max_depth)
+        await self.dfs_recursive(root_node)
 
         # reset llm model to default
         self.llm.set_default_model(model_temp)
+        self.llm.set_default_max_tokens(max_tokens_temp)
         return root_node
 
 
     def filter_html_for_menu(self, html):
-        """Aggressively remove HTML elements that are unlikely to contain menu items."""
+        """Aggressively remove HTML elements that are unlikely to contain menu items but preserve potential menu-related tags."""
         soup = BeautifulSoup(html, 'html.parser')
-        
-        # Define substrings that should be excluded (in tag names)
-        exclude_substrings = ['script', 'style', 'footer', 'header', 'nav', 'aside', 'noscript', 'form', 'audio', 'video', 'img', 'image', 'path', 'iframe']
-        
-        # Remove tags that contain any of the excluded substrings in their name
-        for tag in soup.find_all(True):  # True finds all tags
-            if any(substring in tag.name for substring in exclude_substrings):
-                tag.extract()  # Remove the tag entirely
-        
-        # Optionally, remove comments
-        comments = soup.find_all(string=lambda text: isinstance(text, Comment))
-        for comment in comments:
-            comment.extract()
 
-        return str(soup.body) if soup.body else str(soup)
+        plain_text = soup.body.get_text(separator='\n', strip=True)
+
+        return plain_text
+
+
 
 
     def satisfies_special_words(self, path):
@@ -273,11 +290,11 @@ Given this URL: {path}
 Respond with "YES" if the URL is relevant, or "NO" if it is not.
 """}
         
-        
-        if self.use_cache and self.llm_relevance.get_data_by_hash(path):
-            # print(f"Retrieving cached data for {path}")
-            cached_data = json.loads(self.llm_relevance.get_data_by_hash(path))['yes_no']
-            return cached_data[0] > cached_data[1]
+        async with self.node_lock:
+            if self.use_cache and self.llm_relevance.get_data_by_hash(path):
+                # print(f"Retrieving cached data for {path}")
+                cached_data = json.loads(self.llm_relevance.get_data_by_hash(path))['yes_no']
+                return cached_data[0] > cached_data[1]
 
         responses = await self.llm.chat([prompt_gpt35], n = 5)
 
@@ -289,10 +306,11 @@ Respond with "YES" if the URL is relevant, or "NO" if it is not.
                 N_YES += 1
             if 'NO' in response:
                 N_NO += 1
-        if self.use_cache:
+    
+        async with self.node_lock:
             self.llm_relevance.save_data(path, json.dumps({'yes_no': (N_YES, N_NO)}))
-            print(f"Caching {path}")
-        
+            print(f"Caching LLM Relevance For {path}")
+    
         return N_YES > N_NO
 
     async def satisfies_embedding_criteria(self, urls):
@@ -310,9 +328,10 @@ Respond with "YES" if the URL is relevant, or "NO" if it is not.
         len_before = len(urls)
 
         if self.use_cache:
-            hashed_data = [(url, self.embedding_relevance.get_data_by_hash(url)) for url in urls]
-            hashed_data = [data for data in hashed_data if data[1] is not None]
-            urls = [url for url in urls if self.embedding_relevance.get_data_by_hash(url) is None]
+            async with self.node_lock:
+                hashed_data = [(url, self.embedding_relevance.get_data_by_hash(url)) for url in urls]
+                hashed_data = [data for data in hashed_data if data[1] is not None]
+                urls = [url for url in urls if self.embedding_relevance.get_data_by_hash(url) is None]
         else:
             urls = [url for url in urls]
             hashed_data = []
@@ -322,16 +341,17 @@ Respond with "YES" if the URL is relevant, or "NO" if it is not.
         
         # Find relevant URLs based on embedding criteria
         relevant_urls = await self.llm.find_url_relevance(urls, target_keywords)
-
+        
         for relevant_url in relevant_urls:
-            if self.use_cache and self.embedding_relevance.get_data_by_hash(relevant_url[0]):
-                print(f'Hashing URL: {relevant_url[0]}')
-                self.embedding_relevance.save_data(relevant_url[0], relevant_url[1])
+            async with self.node_lock:
+                if not self.embedding_relevance.get_data_by_hash(relevant_url[0]):
+                    print(f'Caching Embedding Relevance For {relevant_url[0]}')
+                    self.embedding_relevance.save_data(relevant_url[0], relevant_url[1])
         
         for data in hashed_data:
             relevant_urls.append(data)
         # Return only relevant URLs with the base path excluded
-        return [relevant_url[0] for relevant_url in relevant_urls if relevant_url[1] and float(relevant_url[1]) > .8]
+        return [relevant_url[0] for relevant_url in relevant_urls if relevant_url[1] and float(relevant_url[1])]
     
 
     async def satisfies_special_characteristics(self, paths):

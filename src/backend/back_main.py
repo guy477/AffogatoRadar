@@ -37,7 +37,7 @@ def search_restaurants_nearby(address, restaurant_name, radius=5000):
     params = {
         'location': f"{coords[0]},{coords[1]}",
         'radius': radius,  # in meters
-        'type': 'restaurant',
+        'type': 'food',
         'keyword': restaurant_name,
         'key': api_key
     }
@@ -47,7 +47,8 @@ def search_restaurants_nearby(address, restaurant_name, radius=5000):
     if response_data and response_data['results']:
         # Save the data in the database
         db.save_data(hash_key, json.dumps(response_data))
-
+    
+    print(response_data)
     db.close()
 
     return response_data

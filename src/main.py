@@ -1,108 +1,105 @@
 from backend import back_main
-from backend import local_storage
+from backend import webnode
 from backend import webscraper
 from backend import webcrawler
-from backend import llm
-from bs4 import BeautifulSoup
-import asyncio
+from _deleter import __DELETER_
 
-address = "Houston, Texas"
-# restaurant_name = "Pappadeaux Seafood Kitchen"
-# restaurant_name = "Whataburger"
-# restaurant_name = "Starbucks"
-restaurant_name = "Taco Bell"
-radius = 7500
+import asyncio, json
 
-max_concurrency = 8
 
-async def main():
+
+# __DELETER_('source_dest.db', 'clover')
+# __DELETER_('llm_relevance.db', 'clover')
+# __DELETER_('url_to_html.db', 'clover')
+# __DELETER_('url_to_menu.db', 'clover')
+# __DELETER_('embedding_relevance.db', 'clover')
+# exit(1)
+
+# Global Variables (TODO: Move to _util.py)
+max_concurrency = 4
+use_cache = True
+
+# Load old trees
+try:
+    with open('../data/_trees/trees.json', 'r') as f:
+        tree_data = json.load(f)
+        # old_trees = tree_data
+        old_trees = {_: webnode.WebNode.from_dict(tree_dict) for _, tree_dict in tree_data.items()}
+except Exception as e:
+    print(f"Error: {e}")
+    old_trees = {}
+
+
+async def build_and_parse_tree(restaurants: list, address: str, lookup_radius: int):
     # Initialize local storage
-    scraper = webscraper.WebScraper(use_cache=True, max_concurrency=max_concurrency)
-    crawler = webcrawler.WebCrawler(storage_dir="../data", use_cache=True, scraper=scraper, max_concurrency=max_concurrency)
-    tree = None
-
+    scraper = webscraper.WebScraper(use_cache=use_cache, max_concurrency=max_concurrency, webpage_timeout=webpage_timeout)
+    crawler = webcrawler.WebCrawler(storage_dir="../data", use_cache=use_cache, scraper=scraper, max_concurrency=max_concurrency)
+    trees = {}
+    
     try:
-        # Search for restaurant nearby (check cache first)
-        restaurant_data = back_main.search_restaurants_nearby(address, restaurant_name, radius)
-        if restaurant_data and restaurant_data['results']:
-            first_restaurant = restaurant_data['results'][0]
-            place_id = first_restaurant['place_id']
-            menu_link = back_main.get_menu(place_id)
+        for restaurant_name in restaurants:
+            try:
+                # Search for restaurant nearby (check cache first)
+                restaurant_data = back_main.search_restaurants_nearby(address, restaurant_name, lookup_radius)
+                # print(restaurant_data)
+                if restaurant_data and restaurant_data['results']:
+                    restaurant_data = list(restaurant_data['results'])
 
-            if menu_link:
-                print(f"Menu link: {menu_link}")
-                new_link = await scraper.source_menu_link(menu_link)
+                    good_local_trees = 0
+                    
+                    while restaurant_data and good_local_trees < 2:
+                        first_restaurant = restaurant_data.pop(0)
+                        place_id = first_restaurant['place_id']
+                        menu_link = back_main.get_menu(place_id)
 
-                if new_link:
-                    print("Crawling links...")
-                    tree = await crawler.start_crawling(new_link, d_limit=3)
-                    print(f"Navigate to: {new_link}")
-                else:
-                    print("No menu link found.")
-            else:
-                print("No menu available.")
-        else:
-            print(f"Restaurant not found. {restaurant_data}")
+                        if menu_link:
+                            print(f"Menu link: {menu_link}")
+                            new_link = await scraper.source_menu_link(menu_link)
 
-        if tree:
-            print("Starting DFS...")
-            tree = await scraper.start_dfs(tree)
-            print(tree.menu_book)
-        else:
-            print("No data to process.")
-        
-        
+                            if new_link:
+                                print("Crawling Links & Building Tree...")
+                                tree = await crawler.start_crawling(new_link, d_limit=3)
+                                
+                                print("Parsing tree...")
+                                tree = await scraper.start_dfs(tree)
+                                
+                                if tree:
+                                    if len(tree.children) > 0:
+                                        good_local_trees += 1
+                                trees[place_id] = tree
+                                print(f"Tree constructed and added to trees: (KEY)=`{place_id}`")
+                            else:
+                                print("No forward link found.")
+                        else:
+                            print("No source link available.")
+
+                if not restaurant_data and not tree:
+                    print(f"No restaurants available not found. {restaurant_data}")
+            
+            except Exception as e:
+                print(f"Error With Restaurant ({restaurant_name}): {e}")
 
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"CRITICAL ERROR: {e}")
     
     finally:
         # Close resources
         await scraper.close()
         await crawler.close()
-    
-asyncio.run(main())
 
+    print(trees)
+    old_trees.update(trees)
 
-# def remove_entries(local_storage):
-    
-#     # Fetch all hash_key and idx pairs
-#     local_storage.cursor.execute("SELECT hash_key, idx FROM place_id_map")
-#     all_records = local_storage.cursor.fetchall()
-    
-#     # Iterate over each record and remove the ones containing 'whataburger'
-#     for hash_key, idx in all_records:
-#         if 'tacobell' in hash_key.lower():  # Case-insensitive check
-#             print(f"Removing entry for: {hash_key}")
-            
-#             # Delete from place_id_map
-#             local_storage.cursor.execute("DELETE FROM place_id_map WHERE hash_key = ?", (hash_key,))
-            
-#             # Delete corresponding data in data_dump
-#             local_storage.cursor.execute("DELETE FROM data_dump WHERE id = ?", (idx,))
-            
-#             # Commit changes
-#             local_storage.conn.commit()
+# Define search parameters
+address = "Houston, Texas"
+restaurant_names = ["Pappadeaux Seafood Kitchen", "Dunkin Donuts", "McDonalds", "Whataburger", "Starbucks", "Taco Bell", "Chick-fil-A", "Cocohodo"]
+# restaurant_names = ["Cocohodo"]
+webpage_timeout = 12500 # milliseconds
+radius = 50000
 
-#     print("Finished removing entries.")
+# Run the main function
+asyncio.run(build_and_parse_tree(restaurants=restaurant_names, address=address, lookup_radius=radius))
 
-
-
-# if __name__ == "__main__":
-#     storage = local_storage.LocalStorage(storage_dir="../data", db_name="source_dest.db")
-#     # Remove entries
-#     remove_entries(storage)
-#     # Close the database connection
-#     storage.close()
-
-#     storage = local_storage.LocalStorage(storage_dir="../data", db_name="url_to_html.db")
-#     # Remove entries
-#     remove_entries(storage)
-#     # Close the database connection
-#     storage.close()
-
-#     storage = local_storage.LocalStorage(storage_dir="../data", db_name="url_to_menu.db")
-#     # Remove entries
-#     remove_entries(storage)
-#     # Close the database connection
-#     storage.close()
+# After constructing the trees
+with open('../data/_trees/trees.json', 'w') as f:
+    json.dump({k: v.to_dict() for k, v in old_trees.items()}, f, indent=4) 
