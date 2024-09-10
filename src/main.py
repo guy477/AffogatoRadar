@@ -18,15 +18,16 @@ address = "Houston, Texas"
 restaurant_name = "Taco Bell"
 radius = 5000
 
+max_concurrency = 8
+
 async def main():
     # Initialize local storage
-    storage = local_storage.LocalStorage()
-    scraper = webscraper.WebScraper(use_cache=True)
-    crawler = webcrawler.WebCrawler(storage_dir="../data", use_cache=True, scraper=scraper)
+    scraper = webscraper.WebScraper(use_cache=True, max_concurrency=max_concurrency)
+    crawler = webcrawler.WebCrawler(storage_dir="../data", use_cache=True, scraper=scraper, max_concurrency=max_concurrency)
 
     try:
         # Search for restaurant nearby (check cache first)
-        restaurant_data = back_main.search_restaurants_nearby(api_key, address, restaurant_name, radius, db=storage)
+        restaurant_data = back_main.search_restaurants_nearby(api_key, address, restaurant_name, radius)
         if restaurant_data and restaurant_data['results']:
             first_restaurant = restaurant_data['results'][0]
             place_id = first_restaurant['place_id']
@@ -46,22 +47,20 @@ async def main():
         else:
             print("Restaurant not found.")
 
-        # if tree:
-        #     tree = await scraper.dfs_recursive(tree)
-        # else:
-        #     print("No data to process.")
+        if tree:
+            tree = await scraper.start_dfs(tree)
+        else:
+            print("No data to process.")
         
-        # print(tree.menu_book)
+        print(tree.menu_book)
 
     except Exception as e:
         print(f"Error: {e}")
-        pass
     
     finally:
         # Close resources
         await scraper.close()
         await crawler.close()
-        storage.close()
     
 asyncio.run(main())
 

@@ -8,21 +8,26 @@ from bs4 import BeautifulSoup, Comment
 from ._util import *
 from .local_storage import *
 from .llm import *
-from collections import OrderedDict
+from collections import OrderedDict, deque
 
 
 class WebScraper:
-    def __init__(self, storage_dir: str = "../data", use_cache=True):
+    def __init__(self, storage_dir: str = "../data", use_cache=True, max_concurrency=10):
         self.use_cache = use_cache
         self.llm = LLM()
-
         self.source_dest = LocalStorage(storage_dir, "source_dest.db")
         self.url_to_html = LocalStorage(storage_dir, "url_to_html.db")
         self.url_to_menu = LocalStorage(storage_dir, "url_to_menu.db")
         self.embedding_relevance = LocalStorage(storage_dir, "embedding_relevance.db")
         self.llm_relevance = LocalStorage(storage_dir, "llm_relevance.db")
+        self.visited_urls = set()
 
-        # Initialize the Playwright instance and browser to be reused
+        # Add a semaphore to control max concurrent tasks
+        self.semaphore = asyncio.Semaphore(max_concurrency)
+        self.visited_lock = asyncio.Lock()  # Lock to ensure exclusive access to visited_urls
+        self.node_lock = asyncio.Lock()
+
+        # Initialize Playwright
         self.playwright = None
         self.browser = None
 
@@ -47,7 +52,7 @@ class WebScraper:
         # Check the cache first
         cached_page = self.source_dest.get_data_by_hash(url)
         if self.use_cache and cached_page:
-            print(f"Returning cached page for {url}")
+            # print(f"Returning cached page for {url}")
             return self.url_to_html.get_data_by_hash(cached_page)
 
         # Reuse browser page or open a new one
@@ -63,7 +68,7 @@ class WebScraper:
             if self.use_cache:
                 self.source_dest.save_data(url, final_url)
                 self.url_to_html.save_data(final_url, html_content)
-                print(f"Landing page cached for {url}")
+                print(f"HTML cached for {url}")
                 
             return html_content
 
@@ -112,7 +117,8 @@ class WebScraper:
                 # Check if the new path is a subpage of the base path
                 subpage_links.append(full_url)
             else:
-                print(f"Skipping external link: {full_url}")
+                # print(f"Skipping external link: {full_url}")
+                pass
 
 
         subpage_links = list(OrderedDict.fromkeys(subpage_links))
@@ -121,55 +127,91 @@ class WebScraper:
 
         return subpage_links
         
+
+    async def mark_as_visited(self, url):
+        """Mark a URL as visited with locking to prevent race conditions."""
+        async with self.visited_lock:
+            self.visited_urls.add(url)
+
+    async def is_visited(self, url):
+        """Check if a URL has been visited with locking."""
+        async with self.visited_lock:
+            return url in self.visited_urls
         
 
-    async def dfs_recursive(self, node, parent=None):
-        """Perform DFS traversal recursively starting from the root node and accumulate menu items upwards."""
-        llm_ = LLM('gpt-4o-mini', max_tokens=512)
+    async def process_dfs_node(self, node, parent):
+        """
+        Recursive DFS helper function to process nodes and propagate menu items upwards.
+        """
 
-        print(f"Visiting: {node.url}")
+        async with self.node_lock:
+            # Check if menu items for this URL are already cached
+            cached_menu_items = self.url_to_menu.get_data_by_hash(node.url)
 
-        # Check if menu items for this URL are already cached
-        cached_menu_items = self.url_to_menu.get_data_by_hash(node.url)
         if self.use_cache and cached_menu_items:
-            print(f"Using cached menu items for {node.url}")
+            # print(f"Using cached menu items for {node.url}")
             node.menu_items = json.loads(cached_menu_items)
         else:
-            # Fetch the webpage and extract menu items if not cached
-            html = await self.fetch_webpage_with_js(node.url)
-            filtered_html = self.filter_html_for_menu(html)
-            
-            # Extract the menu items using LLM
-            menu_items = await llm_.extract_menu_items(filtered_html)
-            node.menu_items = menu_items
+            async with self.semaphore:
+                # Fetch the webpage and extract menu items if not cached
+                html = await self.fetch_webpage_with_js(node.url)
+                filtered_html = self.filter_html_for_menu(html)
+                
+                # Extract the menu items using LLM
+                menu_items = await self.llm.extract_menu_items(filtered_html)
+                node.menu_items = menu_items
 
-            # Save the extracted menu items in the cache
-            if self.use_cache: 
-                self.url_to_menu.save_data(node.url, json.dumps(menu_items))
-                print(f"Menu items for {node.url} cached.")
-            else:
-                print("No body element found in the HTML.")
-                node.menu_items = {}  # No menu found
-
-        # Update node's menu_book with current menu_items
-        for item, ingredients in node.menu_items.items():
-            node.menu_book[item].extend(ingredients)
-
-        # Set the node's description to the string of the current node's menu_items keys
-        node.description = ', '.join(node.menu_items.keys())
-
-        # Recursively process children nodes
+                async with self.node_lock:
+                    # Save the extracted menu items in the cache using the node lock
+                    if self.use_cache:
+                        self.url_to_menu.save_data(node.url, json.dumps(menu_items))
+                        print(f"Menu items for {node.url} cached.")
+        
+        # Recursively process all child nodes first
+        # Create a list of tasks by filtering unvisited children
+        tasks = []
         for child in node.children:
-            await self.dfs_recursive(child, node)
+            if not await self.is_visited(child.url):  # This needs to be awaited outside the comprehension
+                await self.mark_as_visited(child.url)  # Mark the node as visited
+                tasks.append(self.process_dfs_node(child, node))  # Add the task to the list
 
-        # Propagate the menu items upwards to the parent after processing all children
-        if parent:
-            for item, ingredients in node.menu_book.items():
-                parent.menu_book[item].extend(ingredients)
-                print(f"Propagated {item}: {ingredients} to parent {parent.url}")
+        # Now gather the tasks and await their completion
+        await asyncio.gather(*tasks)
 
-        return node
+        # After processing all children, propagate the menu items to the parent
+        async with self.node_lock:
+            for item, ingredients in node.menu_items.items():
+                node.menu_book[item].extend(ingredients)
 
+            if parent:
+                for item, ingredients in node.menu_book.items():
+                    # print(f"Propagated {item}: {ingredients} to parent {parent.url}")
+                    parent.menu_book[item].extend(ingredients)
+                    
+
+    async def dfs_recursive(self, root_node, max_depth):
+        """
+        Perform recursive DFS traversal asynchronously.
+        """
+        # Mark the root node as visited and start processing recursively
+        await self.mark_as_visited(root_node.url)
+        await self.process_dfs_node(root_node, None)
+
+    async def start_dfs(self, root_node, max_depth=2, openai_model = 'gpt-4o-mini'):
+        """
+        Kicks off the DFS recursive traversal.
+        Assumes tree is a zero-cycle, directed graph.
+        """
+
+        # set llm model to provided model
+        model_temp = self.llm.model
+        self.llm.set_default_model(openai_model)
+
+        await self.dfs_recursive(root_node, max_depth)
+
+        # reset llm model to default
+        self.llm.set_default_model(model_temp)
+        return root_node
 
 
     def filter_html_for_menu(self, html):
@@ -233,7 +275,7 @@ Respond with "YES" if the URL is relevant, or "NO" if it is not.
         
         
         if self.use_cache and self.llm_relevance.get_data_by_hash(path):
-            print(f"Retrieving cached data for {path}")
+            # print(f"Retrieving cached data for {path}")
             cached_data = json.loads(self.llm_relevance.get_data_by_hash(path))['yes_no']
             return cached_data[0] > cached_data[1]
 
@@ -266,6 +308,7 @@ Respond with "YES" if the URL is relevant, or "NO" if it is not.
         target_keywords = ['menu', 'food', 'drink', 'lunch', 'dinner', 'desert', 'breakfast']
 
         len_before = len(urls)
+
         if self.use_cache:
             hashed_data = [(url, self.embedding_relevance.get_data_by_hash(url)) for url in urls]
             hashed_data = [data for data in hashed_data if data[1] is not None]
@@ -276,7 +319,7 @@ Respond with "YES" if the URL is relevant, or "NO" if it is not.
 
         
         
-        print(f'Number of Hashed URLs: {len_before - len(urls)}... Percentage loads saved: {100*(len_before - len(urls))/len_before}%')
+        # print(f'Number of Hashed URLs: {len_before - len(urls)}... Percentage loads saved: {100*(len_before - len(urls))/len_before}%')
         
         # Find relevant URLs based on embedding criteria
         relevant_urls = await self.llm.find_url_relevance(urls, target_keywords)
@@ -305,8 +348,7 @@ Respond with "YES" if the URL is relevant, or "NO" if it is not.
         urls = [path for path in urls if self.satisfies_special_words(path) or await self.satisfies_llm_criteria(path)]
         
         paths = [urljoin(base_path, path) for path in urls]
-        print(base_path)
-        print(paths)
+
         return paths
 
     async def find_menu_items(self, menu_url):

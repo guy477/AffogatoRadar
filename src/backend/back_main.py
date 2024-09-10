@@ -1,6 +1,7 @@
 import requests
 from geopy.geocoders import Nominatim
 import hashlib
+from .local_storage import LocalStorage
 from ._util import *
 
 # Helper function to create a unique hash key from API inputs
@@ -15,7 +16,9 @@ def get_coordinates(address):
     return (location.latitude, location.longitude)
 
 # Step 2: Search for restaurants near the location or return cached results
-def search_restaurants_nearby(api_key, address, restaurant_name, radius=5000, db = None):
+def search_restaurants_nearby(api_key, address, restaurant_name, radius=5000):
+    db = LocalStorage(db_name="addr_rest_rad_to_places.db")
+
     hash_key = generate_hash_key(address, restaurant_name, radius)
     
     # Check if data exists in cache
@@ -39,6 +42,8 @@ def search_restaurants_nearby(api_key, address, restaurant_name, radius=5000, db
 
     # Save the data in the database
     db.save_data(hash_key, json.dumps(response_data))
+
+    db.close()
 
     return response_data
 

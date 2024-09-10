@@ -8,7 +8,7 @@ from rich.console import Console
 from urllib.parse import urlparse, urljoin
 
 class WebCrawler:
-    def __init__(self, storage_dir: str = "../data", use_cache=True, scraper=None, max_concurrency=10):
+    def __init__(self, storage_dir: str = "../data", use_cache=True, scraper=None, max_concurrency=8):
         self.scraper = WebScraper(storage_dir, use_cache) if not scraper else scraper
         self.visited_urls = set()
         self.console = Console()
@@ -41,26 +41,24 @@ class WebCrawler:
 
         # Max depth check
         if depth >= d_limit:
-            print(f"Max depth reached for {normalized_url}")
+            # print(f"Max depth reached for {normalized_url}")
             return
 
         # Fetch the page content asynchronously, limiting concurrency with semaphore
         async with self.semaphore:
             html_content = await self.scraper.fetch_webpage_with_js(normalized_url)
-
-        if not html_content:
-            print(f"Failed to fetch page content for {normalized_url}")
-            return
-
-        # Find subpage links and create child WebNode objects
-        subpage_links = await self.scraper.find_subpage_links(normalized_url, html_content)
+            if not html_content:
+                print(f"Failed to fetch page content for {normalized_url}")
+                return
+            # Find subpage links and create child WebNode objects
+            subpage_links = await self.scraper.find_subpage_links(normalized_url, html_content)
 
         for link in subpage_links:
             normalized_link = self.normalize_url(link, base_url=normalized_url)
 
             # If the subpage link has already been visited, skip it
             if await self.is_visited(normalized_link):
-                print(f"Skipping already visited child: {normalized_link}")
+                # print(f"Skipping already visited child: {normalized_link}")
                 continue
 
             # Mark the link as visited and enqueue the child node
@@ -70,8 +68,8 @@ class WebCrawler:
             async with self.node_lock:
                 node.add_child(child_node)
 
-            # Enqueue the child node for further crawling
-            queue.append((child_node, depth + 1))
+                # Enqueue the child node for further crawling
+                queue.append((child_node, depth + 1))
 
     async def crawl(self, root_node, d_limit):
         """Iteratively crawl subpages starting from the given root node using BFS."""
@@ -81,12 +79,26 @@ class WebCrawler:
         # Mark the root node as visited
         await self.mark_as_visited(normalized_url)
 
-        # While there are nodes to process in the queue
-        while queue:
-            node, depth = queue.popleft()
+        tasks = set([])
 
-            # Process the node (this is done concurrently)
-            await self.process_node(node, depth, d_limit, queue)
+        # While there are nodes to process in the queue or tasks are still running
+        while queue or tasks:
+            # Schedule new tasks as long as we have nodes in the queue
+            while queue and len(tasks) < self.semaphore._value:
+                node, depth = queue.popleft()
+                task = asyncio.create_task(self.process_node(node, depth, d_limit, queue))
+                tasks.add(task)
+
+            # Wait for one or more tasks to complete
+            if tasks:
+                # print(f"Tasks remaining: {len(tasks)}")
+                # As soon as one task completes, remove it from the task list
+                done, tasks = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                
+                # This allows tasks to be removed from the queue and for new ones to be queued
+                for task in done:
+                    task.result()  # This ensures any exception raised is propagated
+
 
     async def start_crawling(self, start_url, d_limit=2):
         """Start the crawling process from the root node asynchronously."""

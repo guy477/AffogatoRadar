@@ -74,18 +74,31 @@ class LLM:
         """
         Asynchronous extraction of menu items from HTML using LLM.
         """
-        prompt = f"""Given the HTML of a restaurant's webpage, extract the menu items in a structured format. List each menu item along with its ingredients. Present the itemized menu in the following format (DO NOT USE ANY NUMBERS):
+        prompt = f"""Given the HTML of a restaurant's webpage, extract the menu items in a structured format. List each menu item along with its ingredients. Present the itemized menu in the following format:
+
+- Each line should represent one menu item
+- The item name and ingredients should be separated by a colon (:)
+- Ingredients should be separated by vertical bars (|)
+- If there are no ingredients, use 'N/A' after the colon
+- Do not use any numbers or bullet points
+- Preserve the exact formatting shown in the examples below
+
+Example output format:
 ```output
 Example Drink:Ingredient|Ingredient|Ingredient
 Example Food:Ingredient|Ingredient|Ingredient|Ingredient
-Example Drink:N/A
-Example Food:N/A
+Example Drink with No Ingredients:N/A
+Example Food with No Ingredients:N/A
 ```
 
-If no menu items are found, return "No menu items found."
-If only one menu item is found, return it in the format shown above.
+Important:
+- Strictly adhere to the format above
+- Do not add any explanatory text or additional information
+- If no menu items are found, return only the exact phrase: "No menu items found."
+- If only one menu item is found, return it in the format shown above
 
-```html
+Now, extract the menu items from the following HTML:
+```
 {html}
 ```"""
         messages = [{"role": "user", "content": prompt}]
