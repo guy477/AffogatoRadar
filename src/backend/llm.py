@@ -1,8 +1,12 @@
+from ._util import *
+
 from openai import OpenAI
 import asyncio  # Add asyncio
-client = OpenAI(api_key="***REMOVED***")
 import numpy as np
 import re
+
+# SANATIZED KEY
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Set up OpenAI API key globally
 

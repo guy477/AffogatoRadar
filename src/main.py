@@ -6,17 +6,12 @@ from backend import llm
 from bs4 import BeautifulSoup
 import asyncio
 
-
-
-# Usage
-api_key = "***REMOVED***"
-
 address = "Houston, Texas"
 # restaurant_name = "Pappadeaux Seafood Kitchen"
 # restaurant_name = "Whataburger"
 # restaurant_name = "Starbucks"
 restaurant_name = "Taco Bell"
-radius = 5000
+radius = 7500
 
 max_concurrency = 8
 
@@ -24,20 +19,22 @@ async def main():
     # Initialize local storage
     scraper = webscraper.WebScraper(use_cache=True, max_concurrency=max_concurrency)
     crawler = webcrawler.WebCrawler(storage_dir="../data", use_cache=True, scraper=scraper, max_concurrency=max_concurrency)
+    tree = None
 
     try:
         # Search for restaurant nearby (check cache first)
-        restaurant_data = back_main.search_restaurants_nearby(api_key, address, restaurant_name, radius)
+        restaurant_data = back_main.search_restaurants_nearby(address, restaurant_name, radius)
         if restaurant_data and restaurant_data['results']:
             first_restaurant = restaurant_data['results'][0]
             place_id = first_restaurant['place_id']
-            menu_link = back_main.get_menu(api_key, place_id)
+            menu_link = back_main.get_menu(place_id)
 
             if menu_link:
                 print(f"Menu link: {menu_link}")
                 new_link = await scraper.source_menu_link(menu_link)
 
                 if new_link:
+                    print("Crawling links...")
                     tree = await crawler.start_crawling(new_link, d_limit=3)
                     print(f"Navigate to: {new_link}")
                 else:
@@ -45,14 +42,16 @@ async def main():
             else:
                 print("No menu available.")
         else:
-            print("Restaurant not found.")
+            print(f"Restaurant not found. {restaurant_data}")
 
         if tree:
+            print("Starting DFS...")
             tree = await scraper.start_dfs(tree)
+            print(tree.menu_book)
         else:
             print("No data to process.")
         
-        print(tree.menu_book)
+        
 
     except Exception as e:
         print(f"Error: {e}")

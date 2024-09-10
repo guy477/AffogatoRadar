@@ -316,7 +316,6 @@ Respond with "YES" if the URL is relevant, or "NO" if it is not.
         else:
             urls = [url for url in urls]
             hashed_data = []
-
         
         
         # print(f'Number of Hashed URLs: {len_before - len(urls)}... Percentage loads saved: {100*(len_before - len(urls))/len_before}%')
@@ -325,14 +324,14 @@ Respond with "YES" if the URL is relevant, or "NO" if it is not.
         relevant_urls = await self.llm.find_url_relevance(urls, target_keywords)
 
         for relevant_url in relevant_urls:
-            if self.use_cache:
+            if self.use_cache and self.embedding_relevance.get_data_by_hash(relevant_url[0]):
                 print(f'Hashing URL: {relevant_url[0]}')
                 self.embedding_relevance.save_data(relevant_url[0], relevant_url[1])
         
         for data in hashed_data:
             relevant_urls.append(data)
         # Return only relevant URLs with the base path excluded
-        return [relevant_url[0] for relevant_url in relevant_urls if relevant_url[1]]
+        return [relevant_url[0] for relevant_url in relevant_urls if relevant_url[1] and float(relevant_url[1]) > .8]
     
 
     async def satisfies_special_characteristics(self, paths):
