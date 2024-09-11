@@ -4,6 +4,8 @@ from openai import OpenAI
 import asyncio  # Add asyncio
 import numpy as np
 import re
+from urllib.parse import urlparse
+from sklearn.metrics.pairwise import cosine_similarity
 
 # SANATIZED KEY
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -47,7 +49,6 @@ class LLM:
             )
 
             embeddings = embeddings.to_dict()
-
             embeddings = [data['embedding'] for data in embeddings['data']]
             return np.array(embeddings)
         except Exception as e:
@@ -58,18 +59,48 @@ class LLM:
         """
         Asynchronous URL filtering based on similarity to target keywords.
         """
-        if urls == []:
+        if not urls:
             return []
 
-        url_embeddings = await self.get_embeddings(urls)
+        # Extract path components for each URL
+        url_components = [segment for url in urls for segment in url.split("/") if segment]
+
+        # Get embeddings for URL components and target keywords
+        url_component_embeddings = await self.get_embeddings(url_components)
         keyword_embeddings = await self.get_embeddings(target_keywords)
 
-        if url_embeddings is None or keyword_embeddings is None:
+        if url_component_embeddings is None or keyword_embeddings is None:
             return []
 
-        similarities = np.dot(url_embeddings, keyword_embeddings.T)
-        max_similarities = np.max(similarities, axis=1)
-        relevant_urls = [(urls[i], sim) for i, sim in enumerate(max_similarities)]
+        # Compute cosine similarity between URL components and keywords
+        similarities = cosine_similarity(url_component_embeddings, keyword_embeddings)
+
+        # Calculate max similarity for each URL based on its components
+        idx = 0
+        relevant_urls = []
+        for url in urls:
+            components = [segment for segment in url.split("/") if segment]
+            num_components = len(components)
+
+            if num_components == 0:
+                relevant_urls.append((url, 0))  # No components to compare, similarity is 0
+                continue
+
+            # Extract the relevant part of the similarity matrix for this URL
+            url_similarities = similarities[idx:idx + num_components]
+            idx += num_components
+
+            if url_similarities.size == 0:
+                relevant_urls.append((url, 0))  # No similarity values, similarity is 0
+                continue
+            
+            # For each component, get the max similarity (highest value in the row)
+            max_per_component = np.max(url_similarities, axis=1)
+            
+            # Get the max similarity for the entire URL
+            max_similarity = np.max(max_per_component) if max_per_component.size > 0 else 0
+            
+            relevant_urls.append((url, max_similarity))
 
         return relevant_urls
 
@@ -83,7 +114,8 @@ class LLM:
 - Item name and ingredients should be separated by a colon (:).
 - Ingredients should be separated by vertical bars (|).
 - If there are no ingredients, use 'N/A' after the colon.
-- Omit any numbers, prices, or calories.
+- Omit any numbers, special characters, or punctuation.
+- Omit any prices, calories, descriptions.
 - Maintain the exact formatting shown in the example.
 
 Example format:
@@ -96,6 +128,7 @@ Important:
 - Adhere strictly to the format.
 - If no items are found, return only "No menu items found."
 - If only one item is found, return it in the format shown.
+- DO NOT HALLUCINATE OR MAKE UP ITEMS.
 
 Now, extract the menu items from the following HTML:
 ```

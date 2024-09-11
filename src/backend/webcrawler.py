@@ -39,15 +39,19 @@ class WebCrawler:
         """Process a single node, fetch its content, and enqueue child nodes."""
         normalized_url = self.normalize_url(node.url)
 
-        # Max depth check
-        if depth >= d_limit:
-            return
+        html = None
+        err_count = 0
+        correct_timeout = self.scraper.webpage_timeout*2//1000 # 2 calls, convert milliseconds to seconds
 
         # Fetch the page content asynchronously, limiting concurrency with semaphore
         async with self.semaphore:
             try:
-                correct_timeout = self.scraper.webpage_timeout*2//1000 # 2 calls, convert milliseconds to seconds
-                html_content = await asyncio.wait_for(self.scraper.fetch_webpage_with_js(normalized_url), timeout=correct_timeout)
+                while not html and err_count < 3:
+                    err_count += 1
+                    html = await asyncio.wait_for(self.scraper.fetch_webpage_with_js(normalized_url), timeout=correct_timeout)
+                if err_count == 3:
+                    print(f"Failed to fetch page {node.url} after 3 attempts.")
+                    return
             except asyncio.TimeoutError:
                 print(f"Timeout while fetching {normalized_url}")
                 return
@@ -55,15 +59,19 @@ class WebCrawler:
                 print(f"Failed to fetch page content for {normalized_url}: {e}")
                 return
 
-            if not html_content:
+            if not html:
                 print(f"Failed to fetch page content for {normalized_url}")
                 return
 
             # Find subpage links and create child WebNode objects
-            subpage_links = await self.scraper.find_subpage_links(normalized_url, html_content)
+            subpage_links = await self.scraper.find_subpage_links(normalized_url, html)
 
         for link in subpage_links:
             normalized_link = self.normalize_url(link, base_url=normalized_url)
+            # verify our depth is still valid (since we do the visit check here):
+            # If we do it too early, we never load the page.
+            if depth >= d_limit:
+                continue
 
             # If the subpage link has already been visited, skip it
             if await self.is_visited(normalized_link):
@@ -71,6 +79,7 @@ class WebCrawler:
 
             # Mark the link as visited and enqueue the child node
             await self.mark_as_visited(normalized_link)
+            
 
             child_node = WebNode(url=normalized_link, descriptor=f"{normalized_link}")
             async with self.node_lock:
@@ -107,13 +116,19 @@ class WebCrawler:
 
     async def start_crawling(self, start_url, d_limit=2):
         """Start the crawling process from the root node asynchronously."""
+        # Clear the visitation set and create the root node
+        self.visited_urls.clear()
         self.root_node = WebNode(url=self.normalize_url(start_url), descriptor=start_url)
+
+        # Begin crawling webpage
         await self.crawl(self.root_node, d_limit)
 
         # Visualize the website structure after crawling
         tree = self.root_node.visualize()
         self.console.print(tree)
+
         return self.root_node
+    
     async def close(self):
         """Close the WebScraper."""
         if self.scraper:

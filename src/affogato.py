@@ -12,48 +12,88 @@ with open(file_path, 'r') as file:
 # Initialize the LLM instance
 llm = LLM()
 
-# Example async function for testing environment setup
 class AffogatoFinder:
     def __init__(self):
-        pass
-
+        # Variants for ice cream and espresso
+        self.ice_cream_variants = ["scoop of gelato", "scoop of ice cream", "ice cream", "vanilla ice cream", "vanilla gellato", "gellato"]
+        self.espresso_variants = ["espresso", "double espresso", "shot of espresso", "coffee", "hot coffee"]
+    
+    async def average_embeddings(self, target_items):
+        """
+        Get the average embedding for a list of target items (i.e. variations of "ice cream" or "espresso").
+        """
+        target_embeddings = await llm.get_embeddings(target_items)
+        if target_embeddings is None:
+            return None
+        return np.mean(target_embeddings, axis=0)  # Calculate the average embedding
+    
     async def find_affogato(self, menu_book):
         """
         Checks if a restaurant's menu book contains ingredients to make affogato,
         and finds the most similar ingredients for "ice cream" and "espresso."
+        Considers both menu item names and their descriptions.
         """
-        target_items = ["ice cream", "espresso"]
-        menu_items = [x.lower() for x in list(menu_book.keys())]
+        menu_items = []
+        menu_descriptions = []
 
-        # Get embeddings for menu items and target items
-        menu_embeddings = await llm.get_embeddings(menu_items)
-        target_embeddings = await llm.get_embeddings(target_items)
+        # Combine menu item names with their descriptions for embedding
+        for key, value in menu_book.items():
+            menu_items.append(key.lower())
+            if isinstance(value, str):
+                menu_descriptions.append(value.lower())  # Append descriptions
+            else:
+                menu_descriptions.append("")  # If no description available, use an empty string
 
-        if menu_embeddings is None or target_embeddings is None:
+        combined_menu_items = [f"{item} {desc}".strip() for item, desc in zip(menu_items, menu_descriptions)]
+
+        # Get embeddings for combined menu items and average embeddings for target items
+        menu_embeddings = await llm.get_embeddings(combined_menu_items)
+        ice_cream_embedding = await self.average_embeddings(self.ice_cream_variants)
+        espresso_embedding = await self.average_embeddings(self.espresso_variants)
+
+        if menu_embeddings is None or ice_cream_embedding is None or espresso_embedding is None:
             return False
 
-        # Calculate cosine similarities between menu items and target items
-        similarities = cosine_similarity(menu_embeddings, target_embeddings)
+        # Calculate cosine similarities between menu items and target embeddings
+        ice_cream_similarities = cosine_similarity(menu_embeddings, ice_cream_embedding.reshape(1, -1))
+        espresso_similarities = cosine_similarity(menu_embeddings, espresso_embedding.reshape(1, -1))
 
-        # Find the most similar menu item for both "ice cream" and "espresso"
-        ice_cream_sim = np.max(similarities[:, 0])
-        espresso_sim = np.max(similarities[:, 1])
+        # Check for items where similarity to both ice cream and espresso is too close
+        valid_items = []
+        for i in range(len(combined_menu_items)):
+            ice_cream_sim = ice_cream_similarities[i][0]
+            espresso_sim = espresso_similarities[i][0]
 
-        ice_cream_idx = np.argmax(similarities[:, 0])  # Index of most similar to "ice cream"
-        espresso_idx = np.argmax(similarities[:, 1])   # Index of most similar to "espresso"
+            # Ignore items where the similarities are too close (i.e., difference < 0.1)
+            # if abs(ice_cream_sim - espresso_sim) >= 0.1:
+            valid_items.append((i, ice_cream_sim, espresso_sim))
 
-        most_similar_ice_cream = menu_items[ice_cream_idx]
-        most_similar_espresso = menu_items[espresso_idx]
+        # If no valid items, return False
+        if not valid_items:
+            return False
+
+        # Find the most similar valid menu item for both "ice cream" and "espresso"
+        ice_cream_item = max(valid_items, key=lambda x: x[1])  # Max similarity to ice cream
+        espresso_item = max(valid_items, key=lambda x: x[2])   # Max similarity to espresso
+
+        ice_cream_idx, ice_cream_sim, _ = ice_cream_item
+        espresso_idx, _, espresso_sim = espresso_item
+
+        most_similar_ice_cream = combined_menu_items[ice_cream_idx]
+        most_similar_espresso = combined_menu_items[espresso_idx]
 
         print(f'\nice_cream_sim: {ice_cream_sim} (Most similar ingredient: {most_similar_ice_cream})')
         print(f'espresso_sim: {espresso_sim} (Most similar ingredient: {most_similar_espresso})')
 
-        return ice_cream_sim >= 0.90 and espresso_sim >= 0.90, most_similar_ice_cream, most_similar_espresso
+        return ice_cream_sim >= 0.7 and espresso_sim >= 0.7, most_similar_ice_cream, most_similar_espresso
 
     async def find_affogato_in_menus(self, node_list):
+        """
+        Loops through each node's menu book and checks if affogato ingredients are found.
+        """
         results = []
         for node in node_list:
-            menu_book = node['menu_book']
+            menu_book = node.get('menu_book', None)
             if not menu_book:
                 continue
             
@@ -78,9 +118,8 @@ affogato_finder = AffogatoFinder()
 
 # Test on the tree data root node
 async def test_affogato():
-    print(tree_data['ChIJ8V1lbLUgQYYR67H1nckMgio']['menu_book'])
-    # root_node = [tree_data['ChIJDb70R4zAQIYRPNqzh7SDJS4']]  # Use the root node for testing
-    root_nodes = list(tree_data.values())
+    # print(tree_data['ChIJ8V1lbLUgQYYR67H1nckMgio']['menu_book'])
+    root_nodes = list(tree_data.values())  # Use the root nodes for testing
     affogato_results = await affogato_finder.find_affogato_in_menus(root_nodes)
     return affogato_results
 
