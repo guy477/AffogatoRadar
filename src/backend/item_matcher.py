@@ -3,7 +3,7 @@ from .local_storage import *
 from .llm import *
 
 
-class MenuItemMatcher:
+class ItemMatcher:
     def __init__(self, target_attributes, attribute_weights=None):
         self.target_attributes = target_attributes
         if attribute_weights is None:
@@ -62,10 +62,10 @@ class MenuItemMatcher:
     def cosine_sim(self, vec1, vec2):
         return cosine_similarity([vec1], [vec2])[0][0]
 
-    async def calculate_attribute_similarity(self, menu_item_ingredients):
+    async def calculate_attribute_similarity(self, scraped_item_ingredients):
         # Generate n-grams from the list of ingredients
-        menu_item_ngrams = self.get_ngrams(menu_item_ingredients)
-        menu_item_embeddings = await self.get_phrase_embeddings(menu_item_ngrams)
+        scraped_item_ngrams = self.get_ngrams(scraped_item_ingredients)
+        scraped_item_embeddings = await self.get_phrase_embeddings(scraped_item_ngrams)
         attribute_similarity_scores = {}
 
         
@@ -75,7 +75,7 @@ class MenuItemMatcher:
                 phrase_lower = phrase.lower()
                 phrase_embedding = self.attribute_phrase_embeddings[phrase_lower]
                 
-                for ngram, ngram_embedding in menu_item_embeddings.items():
+                for ngram, ngram_embedding in scraped_item_embeddings.items():
                     similarity = self.cosine_sim(ngram_embedding, phrase_embedding)
                     max_similarity = max(max_similarity, similarity)
             attribute_similarity_scores[attribute] = max_similarity
@@ -83,24 +83,24 @@ class MenuItemMatcher:
         
         return attribute_similarity_scores
 
-    async def calculate_target_similarity(self, menu_item_name):
-        menu_item_embedding = (await self.get_phrase_embeddings([menu_item_name.lower()]))[menu_item_name.lower()]
+    async def calculate_target_similarity(self, scraped_item_name):
+        scraped_item_embedding = (await self.get_phrase_embeddings([scraped_item_name.lower()]))[scraped_item_name.lower()]
         max_similarity = 0
         for name in self.target_attributes['name']:
             name_lower = name.lower()
             name_embedding = self.attribute_phrase_embeddings[name_lower]
-            similarity = self.cosine_sim(menu_item_embedding, name_embedding)
+            similarity = self.cosine_sim(scraped_item_embedding, name_embedding)
             max_similarity = max(max_similarity, similarity)
         return max_similarity
 
-    async def hybrid_similarity(self, menu_item_name, menu_item_ingredients, attribute_threshold=0.0, name_similarity_weight=0.5):
+    async def hybrid_similarity(self, scraped_item_name, scraped_item_ingredients, attribute_threshold=0.0, name_similarity_weight=0.5):
         # Calculate attribute similarity
 
-        attribute_similarity_scores = await self.calculate_attribute_similarity(menu_item_ingredients) #if menu_item_ingredients else {}
+        attribute_similarity_scores = await self.calculate_attribute_similarity(scraped_item_ingredients) #if scraped_item_ingredients else {}
         # Apply threshold
         passed_attributes = {attr: score if score >= attribute_threshold else 0 for attr, score in attribute_similarity_scores.items()}
         # If no attributes pass and ingredients are provided, similarity is low
-        if not any(passed_attributes.values()) and menu_item_ingredients:
+        if not any(passed_attributes.values()) and scraped_item_ingredients:
             return 0.0, attribute_similarity_scores
 
         # Weighted attribute score
@@ -113,11 +113,11 @@ class MenuItemMatcher:
         
         
         # Calculate target similarity
-        target_similarity_score = await self.calculate_target_similarity(menu_item_name)
+        target_similarity_score = await self.calculate_target_similarity(scraped_item_name)
         
         # Combine scores
         # we have ingredients to consider!
-        if menu_item_ingredients:
+        if scraped_item_ingredients:
             combined_score = (target_similarity_score * name_similarity_weight) + \
                                 (weighted_attribute_score * (1 - name_similarity_weight))
         else:
@@ -126,12 +126,12 @@ class MenuItemMatcher:
         
         return combined_score, attribute_similarity_scores
 
-    async def run_hybrid_similarity_tests(self, menu_items):
+    async def run_hybrid_similarity_tests(self, scraped_items):
         results = []
-        for item_name, item_ingredients in menu_items.items():
+        for item_name, item_ingredients in tqdm(scraped_items.items(), desc = 'Calculating `scraped_item` Embeddings (this can take a while)....'):
             combined_score, attribute_scores = await self.hybrid_similarity(item_name, item_ingredients)
             results.append({
-                'menu_item': item_name,
+                'scraped_item': item_name,
                 'ingredients': item_ingredients,
                 'combined_score': combined_score,
                 'attribute_scores': attribute_scores
@@ -149,7 +149,7 @@ if __name__ == "__main__":
     }
 
     # Example menu items with ingredients
-    menu_items = {
+    scraped_items = {
         "classic chicken Parmesan": ["chicken", "parmesan", "tomato sauce"],
         "spaghetti with chicken Parmesan": ["spaghetti", "chicken", "parmesan"],
         "grilled chicken with mozzarella and marinara": ["chicken", "mozzarella", "marinara sauce"],
@@ -182,10 +182,10 @@ if __name__ == "__main__":
     }
 
 
-    matcher = MenuItemMatcher(target_attributes)
-    results = asyncio.run(matcher.run_hybrid_similarity_tests(menu_items))
+    matcher = ItemMatcher(target_attributes)
+    results = asyncio.run(matcher.run_hybrid_similarity_tests(scraped_items))
     for result in results:
-        print(f"Menu Item: {result['menu_item']}")
+        print(f"Menu Item: {result['scraped_item']}")
         print(f"Ingredients: {', '.join(result['ingredients'])}")
         print(f"Combined Similarity Score: {result['combined_score']:.4f}")
         print(f"Attribute Similarity Scores: {result['attribute_scores']}\n")

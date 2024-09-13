@@ -7,7 +7,7 @@ class WebNode:
     def __init__(self, url, descriptor=None):
         self.url = url
         self.descriptor = descriptor
-        self.menu_items = {}
+        self.scraped_items = {}
         self.menu_book = defaultdict(set)
         self.children = []  # List of WebNode objects (children of this node)
 
@@ -44,7 +44,7 @@ class WebNode:
         return {
             'url': self.url,
             'descriptor': self.descriptor,
-            'menu_items': list(set(self.menu_items)),
+            'scraped_items': list(set(self.scraped_items)),
             'menu_book': {k: list(set(v)) for k, v in dict(self.menu_book).items()}, # convert set to list for json serialization
             'children': [child.to_dict() for child in self.children]  # Recursively convert children
         }
@@ -53,7 +53,7 @@ class WebNode:
     def from_dict(data):
         """Load a WebNode object from a dictionary."""
         node = WebNode(url=data['url'], descriptor=data.get('descriptor'))
-        node.menu_items = data.get('menu_items', set([]))
+        node.scraped_items = data.get('scraped_items', set([]))
         node.menu_book = defaultdict(list, data.get('menu_book', {}))
         node.menu_book = {k: set(v) for k, v in node.menu_book.items()} # convert list to set
         node.children = [WebNode.from_dict(child_data) for child_data in data.get('children', [])]

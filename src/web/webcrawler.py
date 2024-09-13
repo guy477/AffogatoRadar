@@ -5,6 +5,8 @@ from .webnode import WebNode
 
 from collections import deque
 from rich.console import Console
+from urllib.parse import urljoin, urlparse
+import asyncio
 
 
 class WebCrawler:
@@ -13,8 +15,9 @@ class WebCrawler:
         self.visited_urls = set()
         self.console = Console()
         self.visited_lock = asyncio.Lock()  # Lock to ensure exclusive access to visited_urls
-        self.node_lock = asyncio.Lock()  # Lock to ensure exclusive node handling
+        self.node_lock = asyncio.Lock()     # Lock to ensure exclusive node handling
         self.semaphore = asyncio.Semaphore(max_concurrency)  # Limit concurrent fetches
+        self.root_normalized_url = None     # To store the normalized root URL
 
     def normalize_url(self, url, base_url=None):
         """Normalize the URL by joining it with the base and stripping any trailing slashes."""
@@ -22,9 +25,9 @@ class WebCrawler:
         if base_url:
             url_ = urljoin(base_url, url_)
         parsed = urlparse(url_)
-        normalized_url = parsed.scheme + "://" + parsed.netloc + parsed.path
+        normalized_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
         return normalized_url.rstrip('/')
-    
+
     async def mark_as_visited(self, url):
         """Mark a URL as visited with locking to prevent race conditions."""
         async with self.visited_lock:
@@ -39,19 +42,29 @@ class WebCrawler:
         """Process a single node, fetch its content, and enqueue child nodes."""
         normalized_url = self.normalize_url(node.url)
 
+        # Skip processing if the node is the root node and it's already been processed
+        if normalized_url == self.root_normalized_url and depth > 0:
+            return
+
         html = None
         final_url = None
         subpage_links = []
         
         err_count = 0
-        correct_timeout = self.scraper.webpage_timeout*2//1000 # 2 calls, convert milliseconds to seconds
+        
+        # (* 3) we multiply by 3 because in fetch_and_cache_content.
+        # In the worst case we make 2 seperate scrape calls reaching timeout plus gpt extraction (to be given the same timeout duration).
+        correct_timeout = self.scraper.webpage_timeout * 3 // 1000  # Convert milliseconds to seconds
 
         # Fetch the page content asynchronously, limiting concurrency with semaphore
         async with self.semaphore:
             try:
                 while not html and err_count < 3:
                     err_count += 1
-                    final_url, html = await asyncio.wait_for(self.scraper.fetch_and_cache_content(normalized_url), timeout=correct_timeout)
+                    final_url, html = await asyncio.wait_for(
+                        self.scraper.fetch_and_cache_content(normalized_url),
+                        timeout=correct_timeout
+                    )
                 if err_count == 3:
                     print(f"Failed to fetch page {node.url} after 3 attempts.")
                     return
@@ -66,25 +79,32 @@ class WebCrawler:
                 print(f"Failed to fetch page content for {normalized_url}")
                 return
 
+            # Normalize final_url after redirection and mark it as visited
+            if final_url:
+                normalized_final_url = self.normalize_url(final_url)
+                if not await self.is_visited(normalized_final_url):
+                    await self.mark_as_visited(normalized_final_url)
+                    # If the final URL is the root URL and not the initial processing, skip
+                    if normalized_final_url == self.root_normalized_url and depth > 0:
+                        return
+
             if not self.scraper.web_fetcher.is_pdf_url(final_url):
-                # Find subpage links and create child WebNode objects
                 subpage_links = await self.scraper.find_subpage_links(normalized_url, html)
 
         for link in subpage_links:
             normalized_link = self.normalize_url(link, base_url=normalized_url)
-            # verify our depth is still valid (since we do the visit check here):
-            # If we do it too early, we never load the page.
+
+            # Skip if depth limit is reached
             if depth >= d_limit:
                 continue
 
-            # If the subpage link has already been visited, skip it
+            # Prevent revisiting URLs
             if await self.is_visited(normalized_link):
                 continue
 
-            # Mark the link as visited and enqueue the child node
+            # Mark the link as visited before enqueuing to prevent race conditions
             await self.mark_as_visited(normalized_link)
             
-
             child_node = WebNode(url=normalized_link, descriptor=f"{normalized_link}")
             async with self.node_lock:
                 node.add_child(child_node)
@@ -95,23 +115,27 @@ class WebCrawler:
         queue = deque([(root_node, 0)])  # Each entry is a tuple (node, depth)
         normalized_url = self.normalize_url(root_node.url)
 
+        # Store the root normalized URL for reference
+        self.root_normalized_url = normalized_url
+
         # Mark the root node as visited
         await self.mark_as_visited(normalized_url)
 
-        tasks = set([])
+        tasks = set()
 
         # While there are nodes to process in the queue or tasks are still running
         while queue or tasks:
-            # Schedule new tasks as long as we have nodes in the queue
+            # Schedule new tasks as long as we have nodes in the queue and haven't hit concurrency limit
             while queue and len(tasks) < self.semaphore._value:
                 node, depth = queue.popleft()
                 task = asyncio.create_task(self.process_node(node, depth, d_limit, queue))
                 tasks.add(task)
 
             if tasks:
-                # Wait for one or more tasks to complete
-                done, tasks = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-                
+                # Wait for any task to complete
+                done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                tasks = pending
+
                 for task in done:
                     try:
                         task.result()  # Propagate exceptions
@@ -122,9 +146,16 @@ class WebCrawler:
         """Start the crawling process from the root node asynchronously."""
         # Clear the visitation set and create the root node
         self.visited_urls.clear()
-        self.root_node = WebNode(url=self.normalize_url(start_url), descriptor=start_url)
+        normalized_start_url = self.normalize_url(start_url)
+        self.root_node = WebNode(url=normalized_start_url, descriptor=start_url)
 
-        # Begin crawling webpage
+        # Store the root normalized URL
+        self.root_normalized_url = normalized_start_url
+
+        # Mark the root node as visited before enqueueing
+        await self.mark_as_visited(normalized_start_url)
+
+        # Begin crawling
         await self.crawl(self.root_node, d_limit)
 
         # Visualize the website structure after crawling

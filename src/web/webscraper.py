@@ -88,14 +88,6 @@ class WebScraper:
 
         return subpage_links
 
-    def satisfies_special_words(self, full_url):
-        path = urlparse(full_url).path
-        special_words = SPECIAL_WORDS  # Assume SPECIAL_WORDS is imported
-        for special_word in special_words:
-            if special_word in path:
-                return True
-        return False
-
     async def url_embedding_relevance(self, full_urls):
         if self.use_cache:
             hashed_data = [(url, self.cache_manager.get_cached_data('embedding_relevance', url)) for url in full_urls]
@@ -118,10 +110,10 @@ class WebScraper:
     async def satisfies_special_characteristics(self, full_urls):
         if not full_urls:
             return []
-
-        relevant_urls = [url for url in full_urls if self.satisfies_special_words(url)]
-        full_urls = relevant_urls
+        
         full_urls = await self.url_embedding_relevance(full_urls)
+
+        # NOTE: here you can incorporate more or simplify the existing url filtering logic...
 
         return full_urls
 

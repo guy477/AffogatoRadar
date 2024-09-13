@@ -8,7 +8,7 @@ class LLMHandler:
     def __init__(self):
         self.llm = LLM()
 
-    async def extract_menu_items(self, content, content_type='html'):
+    async def extract_scraped_items(self, content, content_type='html'):
         if content_type == 'pdf':
             prompt = PROMPT_HTML_EXTRACT.format(content)  # Use appropriate prompt for PDFs
         else:
@@ -18,8 +18,8 @@ class LLMHandler:
 
         response = responses[-1] if responses else ""
         response = self.clean_response(response)
-        menu_items = self.parse_menu_output(response)
-        return menu_items
+        scraped_items = self.parse_menu_output(response)
+        return scraped_items
 
     def clean_response(self, response):
         response = response.replace('```output\n', '').replace('```output', '').replace('\n```', '').replace('```', '').strip()
@@ -46,7 +46,7 @@ class LLMHandler:
         if not urls:
             return []
 
-        # split the URLs ('/', '.', '_', and '-')
+        # Split the URLs on '/', '.', '_', and '-'
         url_components = [segment for url in urls for segment in re.split(r'[/._-]', url) if segment]
         url_component_embeddings = await self.get_embeddings(url_components)
         keyword_embeddings = await self.get_embeddings(TARGET_URL_KEYWORDS)
@@ -54,17 +54,21 @@ class LLMHandler:
         if url_component_embeddings is None or keyword_embeddings is None:
             return []
 
+        # Calculate similarities between all URL components and all keywords
         similarities = cosine_similarity(url_component_embeddings, keyword_embeddings)
-        idx = 0
+
         relevant_urls = []
+        idx = 0
         for url in urls:
-            components = [segment for segment in url.split("/") if segment]
+            # Split each URL into components
+            components = [segment for segment in re.split(r'[/._-]', url) if segment]
             num_components = len(components)
 
             if num_components == 0:
                 relevant_urls.append((url, 0))
                 continue
 
+            # Get similarities for this URL's components
             url_similarities = similarities[idx:idx + num_components]
             idx += num_components
 
@@ -72,8 +76,8 @@ class LLMHandler:
                 relevant_urls.append((url, 0))
                 continue
 
-            max_per_component = np.max(url_similarities, axis=1)
-            max_similarity = np.max(max_per_component) if max_per_component.size > 0 else 0
+            # Find the maximum similarity for this URL
+            max_similarity = np.max(url_similarities)
             relevant_urls.append((url, max_similarity))
 
         return relevant_urls

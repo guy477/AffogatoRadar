@@ -5,7 +5,7 @@ class CacheManager:
     def __init__(self, storage_dir: str = "../data"):
         self.source_dest = LocalStorage(storage_dir, "source_dest.db")
         self.url_to_page_data = LocalStorage(storage_dir, "url_to_page_data.db")
-        self.url_to_menu = LocalStorage(storage_dir, "url_to_menu.db")
+        self.url_to_itemize = LocalStorage(storage_dir, "url_to_itemize.db")
         self.embedding_relevance = LocalStorage(storage_dir, "embedding_relevance.db")
         self.llm_relevance = LocalStorage(storage_dir, "llm_relevance.db")
 
@@ -20,6 +20,6 @@ class CacheManager:
     def close(self):
         self.source_dest.close()
         self.url_to_page_data.close()
-        self.url_to_menu.close()
+        self.url_to_itemize.close()
         self.embedding_relevance.close()
         self.llm_relevance.close()

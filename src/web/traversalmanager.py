@@ -32,10 +32,10 @@ class TraversalManager:
 
         semaphored = 0
         async with self.node_lock:
-            cached_menu_items = self.cache_manager.get_cached_data('url_to_menu', node.url)
+            cached_scraped_items = self.cache_manager.get_cached_data('url_to_itemize', node.url)
 
-        if cached_menu_items:
-            node.menu_items = json.loads(cached_menu_items)
+        if cached_scraped_items:
+            node.scraped_items = json.loads(cached_scraped_items)
         else:
             async with self.semaphore:
                 content_type = 'pdf' if self.scraper.web_fetcher.is_pdf_url(node.url) else 'html'
@@ -45,8 +45,8 @@ class TraversalManager:
                     return
 
                 filtered_content = self.content_parser.parse_content(content, content_type)
-                menu_items = await self.llm_handler.extract_menu_items(filtered_content, content_type)
-                node.menu_items = menu_items
+                scraped_items = await self.llm_handler.extract_scraped_items(filtered_content, content_type)
+                node.scraped_items = scraped_items
                 semaphored = 1
 
         tasks = []
@@ -61,7 +61,7 @@ class TraversalManager:
                 for item, ingredients in child.menu_book.items():
                     node.menu_book[item].update(ingredients)
 
-            for item, ingredients in node.menu_items.items():
+            for item, ingredients in node.scraped_items.items():
                 node.menu_book[item].update(ingredients)
 
             if parent:
@@ -69,7 +69,7 @@ class TraversalManager:
                     parent.menu_book[item].update(ingredients)
 
             if semaphored:
-                self.cache_manager.set_cached_data('url_to_menu', node.url, json.dumps(menu_items))
+                self.cache_manager.set_cached_data('url_to_itemize', node.url, json.dumps(scraped_items))
                 print(f"Menu items for {node.url} cached.")
 
     async def dfs_recursive(self, root_node):

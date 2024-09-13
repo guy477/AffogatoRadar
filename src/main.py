@@ -39,8 +39,8 @@ async def build_and_parse_tree(restaurants: list, address: str, lookup_radius: i
     restaurant_menu_loc = restaurant_finder.RestaurantMenuLocator()
     scraper = webscraper.WebScraper(use_cache=use_cache, max_concurrency=max_concurrency, webpage_timeout=webpage_timeout, similarity_threshold=similarity_threshold)
     crawler = webcrawler.WebCrawler(storage_dir="../data", use_cache=use_cache, scraper=scraper, max_concurrency=max_concurrency)
-    menu_item_matcher = item_matcher.MenuItemMatcher(target_attributes)
-    await menu_item_matcher.precompute_attribute_embeddings()
+    scraped_item_matcher = item_matcher.ItemMatcher(target_attributes)
+    await scraped_item_matcher.precompute_attribute_embeddings()
     
     tree = None
     trees = {}    
@@ -75,10 +75,10 @@ async def build_and_parse_tree(restaurants: list, address: str, lookup_radius: i
                                 if len(tree.menu_book) > 0:
                                     # ... with accumulated menu items
                                     # Lets see if we can find our item!
-                                    results = await menu_item_matcher.run_hybrid_similarity_tests(tree.menu_book)
+                                    results = await scraped_item_matcher.run_hybrid_similarity_tests(tree.menu_book)
                                     for result in results:
-                                        if result['combined_score'] > target_threshold or 'Chicken Parmesan Pizza' in result['menu_item']:
-                                            print(f"Menu Item: {result['menu_item']}")
+                                        if result['combined_score'] > target_threshold or 'Chicken Parmesan Pizza' in result['scraped_item']:
+                                            print(f"Menu Item: {result['scraped_item']}")
                                             print(f"Ingredients: {', '.join(result['ingredients'])}")
                                             print(f"Combined Similarity Score: {result['combined_score']:.4f}")
                                             print(f"Attribute Similarity Scores: {result['attribute_scores']}\n")
@@ -112,8 +112,8 @@ async def build_and_parse_tree(restaurants: list, address: str, lookup_radius: i
 address = "Houston, Texas"
 restaurant_names_base = ["Pappadeaux Seafood Kitchen", "Dunkin Donuts", "McDonalds", "Whataburger", "Starbucks", "Taco Bell", "Chick-fil-A", "Cocohodo"]
 restaurant_names_common = ['Denny\'s', 'IHOP', 'Buffalo Wild Wings', 'The Capital Grille', 'Texas Roadhouse', 'Outback Steakhouse', 'Fogo de Chão', 'Steak 48', 'Pappadeaux Seafood Kitchen', 'The Cheesecake Factory', 'Morton\'s The Steakhouse', 'Chama Gaucha Brazilian Steakhouse', 'Saltgrass Steakhouse', 'Pappas Bros. Steakhouse', 'Vic & Anthony\'s', 'Brennan\'s of Houston', 'Fleming\'s Prime Steakhouse', 'Lucille\'s', 'Cracker Barrel', 'Kenny & Ziggy\'s', 'Turner\'s', 'Chili\'s', 'Ruth\'s Chris Steak House', 'BJ\'s Restaurant & Brewhouse', 'The Melting Pot', 'Nancy\'s Hustle', 'Red Lobster', 'Maggiano\'s Little Italy', 'Olive Garden', 'Yard House']
-restaurant_names_common_2 = ['Perry\'s Steakhouse & Grille', 'The Palm', 'Seasons 52', 'Bonefish Grill', 'Grimaldi\'s Pizzeria', 'Black Walnut Cafe', 'The Union Kitchen', 'Gringo\'s Mexican Kitchen', 'Eddie V\'s Prime Seafood', 'Landry\'s Seafood House', 'Razzoo\'s Cajun Cafe', 'PF Chang\'s', 'Mastro\'s Steakhouse', 'Yia Yia Mary\'s Pappas Greek Kitchen', 'Grotto Ristorante', 'Truluck\'s Seafood Steak & Crab House', 'Carrabba\'s Italian Grill', 'Cyclone Anaya\'s Tex-Mex Cantina', 'Del Frisco\'s Double Eagle Steakhouse', 'LongHorn Steakhouse', 'Papa John\'s Pizza', 'Bubba Gump Shrimp Co.', 'Rudy\'s “Country Store” and Bar-B-Q', 'Chipotle Mexican Grill', 'Topgolf', 'Pappasito\'s Cantina', 'Saltgrass Steakhouse', 'Five Guys', 'Ninfa\'s on Navigation', 'Torchy\'s Tacos']
-restaurant_names_niche = ['Theodore Rex', 'Lucille\'s', 'The Breakfast Klub', 'Crawfish & Noodles', 'POST Houston', 'Kiran\'s', 'B&B Butchers', 'Squable', 'The Blind Goat', 'Feges BBQ', 'Huynh Restaurant', 'Pinkerton\'s Barbecue', 'Kâu Ba', 'Armando\'s', 'Phat Eatery', 'Le Jardinier', 'Elro Pizza + Crudo', 'State of Grace', 'Nancy\'s Hustle', 'Pappadeaux Seafood Kitchen', 'Truth BBQ', 'Bludorn', 'Kenny & Ziggy\'s', 'Tris', 'Rosalie Italian Soul', 'Xochi', 'Killen\'s Barbecue', 'Backstreet Café', 'Les Noodle', 'Uchi']
+restaurant_names_common_2 = ['Perry\'s Steakhouse & Grille', 'The Palm', 'Seasons 52', 'Bonefish Grill', 'Grimaldi\'s Pizzeria', 'Black Walnut Cafe', 'The Union Kitchen', 'Gringo\'s Mexican Kitchen', 'Eddie V\'s Prime Seafood', 'Landry\'s Seafood House', 'Razzoo\'s Cajun Cafe', 'PF Chang\'s', 'Mastro\'s Steakhouse', 'Yia Yia Mary\'s Pappas Greek Kitchen', 'Grotto Ristorante', 'Truluck\'s Seafood Steak & Crab House', 'Carrabba\'s Italian Grill', 'Cyclone Anaya\'s Tex-Mex Cantina', 'Del Frisco\'s Double Eagle Steakhouse', 'LongHorn Steakhouse', 'Papa John\'s Pizza', 'Bubba Gump Shrimp Co.', 'Rudy\'s “Country Store” and Bar-B-Q', 'Chipotle Mexican Grill', 'Topgolf', 'Pappasito\'s Cantina', 'Five Guys', 'Ninfa\'s on Navigation', 'Torchy\'s Tacos']
+restaurant_names_niche = ['Lucille\'s', 'Theodore Rex', 'The Breakfast Klub', 'Crawfish & Noodles', 'POST Houston', 'Kiran\'s', 'B&B Butchers', 'Squable', 'The Blind Goat', 'Feges BBQ', 'Huynh Restaurant', 'Pinkerton\'s Barbecue', 'Kâu Ba', 'Armando\'s', 'Phat Eatery', 'Le Jardinier', 'Elro Pizza + Crudo', 'State of Grace', 'Nancy\'s Hustle', 'Truth BBQ', 'Bludorn', 'Tris', 'Rosalie Italian Soul', 'Xochi', 'Killen\'s Barbecue', 'Backstreet Café', 'Les Noodle', 'Uchi']
 restaurant_names = restaurant_names_niche # + restaurant_names_base + restaurant_names_common + restaurant_names_common_2
 
 webpage_timeout = 15000 # milliseconds
