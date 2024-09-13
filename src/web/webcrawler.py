@@ -40,6 +40,9 @@ class WebCrawler:
         normalized_url = self.normalize_url(node.url)
 
         html = None
+        final_url = None
+        subpage_links = []
+        
         err_count = 0
         correct_timeout = self.scraper.webpage_timeout*2//1000 # 2 calls, convert milliseconds to seconds
 
@@ -63,8 +66,9 @@ class WebCrawler:
                 print(f"Failed to fetch page content for {normalized_url}")
                 return
 
-            # Find subpage links and create child WebNode objects
-            subpage_links = await self.scraper.find_subpage_links(normalized_url, html)
+            if not self.scraper.web_fetcher.is_pdf_url(final_url):
+                # Find subpage links and create child WebNode objects
+                subpage_links = await self.scraper.find_subpage_links(normalized_url, html)
 
         for link in subpage_links:
             normalized_link = self.normalize_url(link, base_url=normalized_url)

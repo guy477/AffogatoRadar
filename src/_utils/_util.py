@@ -21,7 +21,7 @@ SPECIAL_WORDS = ['menu', 'food', 'drink', 'lunch', 'dinner', 'breakfast', 'ingre
 
 
 TARGET_URL_KEYWORDS = [
-                'menu', 'food', 'drink', 'lunch', 'dinner', 'dessert', 'breakfast', 'nutrition', 'ingredients',
+                'menu', 'food', 'drink', 'bar', 'lunch', 'dinner', 'brunch', 'dessert', 'breakfast', 'nutrition', 'ingredients',
                 'order', 'takeout', 'delivery', 'specials', 'catering', 'beverages', 'wine', 'cocktails', 
                 'happy-hour', 'reservation', 'meals', 'sides', 'entrees', 'appetizers'
             ]

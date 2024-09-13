@@ -46,7 +46,8 @@ class LLMHandler:
         if not urls:
             return []
 
-        url_components = [segment for url in urls for segment in url.split("/") if segment]
+        # split the URLs ('/', '.', '_', and '-')
+        url_components = [segment for url in urls for segment in re.split(r'[/._-]', url) if segment]
         url_component_embeddings = await self.get_embeddings(url_components)
         keyword_embeddings = await self.get_embeddings(TARGET_URL_KEYWORDS)
 

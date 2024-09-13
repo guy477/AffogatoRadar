@@ -25,7 +25,7 @@ class WebFetcher:
 
     def is_pdf_url(self, url):
         """Check if a URL is a PDF."""
-        return url.lower().endswith('.pdf')
+        return url.lower().endswith('.pdf') if url else False
 
     async def fetch_content(self, url):
         """Fetch content from a URL, handling HTML and PDF."""
@@ -42,34 +42,34 @@ class WebFetcher:
         # Open a new page
         page: Page = await self.browser.new_page()
 
+        
         try:
-            try:
-                # Load dynamic content until timeout
-                await page.goto(url, wait_until='networkidle', timeout=self.webpage_timeout)
-            except Exception:
-                # Close original page and retry
-                if not page.is_closed():
-                    await page.close()
-                page: Page = await self.browser.new_page()
-                print(f"Error/Timeout 1: {url}")
-
-            # Re-execute loading
+            # Load dynamic content until timeout
             await page.goto(url, wait_until='networkidle', timeout=self.webpage_timeout)
-            await asyncio.sleep(1)
-
-            # Get the final URL and HTML content
-            final_url = page.url
-            html_content = await page.content()
-
-            return final_url, html_content
-
         except Exception:
-            print(f"Error/Timeout 2 {url} (No Data Fetched)")
-            return None, None
-
-        finally:
+            # Close original page and retry
             if not page.is_closed():
                 await page.close()
+            page: Page = await self.browser.new_page()
+            print(f"Error/Timeout 1: {url}")
+
+        try:
+            # Re-execute loading
+            await page.goto(url, wait_until='networkidle', timeout=self.webpage_timeout)
+        except Exception:
+            print(f"Error/Timeout 2 {url}")
+
+        # Get the final URL and HTML content
+        final_url = page.url
+        html_content = await page.content()
+
+        if not page.is_closed():
+            await page.close()
+
+        return final_url, html_content
+
+
+
 
     async def fetch_pdf(self, url):
         """Fetch and parse PDF content."""

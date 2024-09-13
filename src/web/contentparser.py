@@ -32,7 +32,7 @@ class ContentParser:
         """Aggressively remove HTML elements that are unlikely to contain menu items."""
         soup = BeautifulSoup(html, 'html.parser')
         body = soup.body or soup
-
+        body.text
         if body:
             remove_tags = ['script', 'style']
             for tag in body(remove_tags):
@@ -44,6 +44,7 @@ class ContentParser:
             for element in body.find_all(True):
                 element.attrs = {}
 
+            body = body.get_text(separator='')
             return str(body)
         else:
             return "No <body> tag found in the HTML"

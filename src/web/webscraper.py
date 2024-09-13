@@ -33,7 +33,8 @@ class WebScraper:
         # Check cache first
         redirect_url = self.cache_manager.get_cached_data('source_dest', url)
         if self.use_cache and redirect_url:
-            content = self.cache_manager.get_cached_data('url_to_html', redirect_url)
+            
+            content = self.cache_manager.get_cached_data('url_to_page_data', redirect_url)
             return redirect_url, content
 
         # Fetch content
@@ -43,7 +44,7 @@ class WebScraper:
 
         # Cache the final page content
         self.cache_manager.set_cached_data('source_dest', url, final_url)
-        self.cache_manager.set_cached_data('url_to_html', final_url, content)
+        self.cache_manager.set_cached_data('url_to_page_data', final_url, content)
         print(f"Content cached for {url}")
 
         return final_url, content
@@ -52,7 +53,7 @@ class WebScraper:
         _, html_content = await self.fetch_and_cache_content(google_maps_url)
         if not html_content:
             return None
-
+        
         menu_link = self.find_menu_link_html(html_content)
         if menu_link:
             print(f"Menu link found: {menu_link}")
@@ -62,6 +63,7 @@ class WebScraper:
             return None
 
     def find_menu_link_html(self, html_content):
+        # This is so specific b/c the html_content is coming from google maps (relatively static)
         soup = BeautifulSoup(html_content, 'html.parser')
         menu_element = soup.find('a', {'data-item-id': 'menu', 'data-tooltip': 'Open menu link'})
         if menu_element and menu_element.get('href'):
@@ -103,7 +105,6 @@ class WebScraper:
             hashed_data = []
 
         relevant_urls = await self.llm_handler.find_url_relevance(full_urls)
-
         for relevant_url in relevant_urls:
             if not self.cache_manager.get_cached_data('embedding_relevance', relevant_url[0]):
                 print(f'Caching Embedding Relevance For {relevant_url[0]}')
