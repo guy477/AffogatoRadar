@@ -2,8 +2,6 @@ from _utils._util import *
 from .local_storage import *
 from .llm import *
 
-from sklearn.metrics.pairwise import cosine_similarity
-
 
 class MenuItemMatcher:
     def __init__(self, target_attributes, attribute_weights=None):

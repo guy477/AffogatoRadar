@@ -48,7 +48,7 @@ class WebCrawler:
             try:
                 while not html and err_count < 3:
                     err_count += 1
-                    html = await asyncio.wait_for(self.scraper.fetch_webpage_with_js(normalized_url), timeout=correct_timeout)
+                    final_url, html = await asyncio.wait_for(self.scraper.fetch_and_cache_content(normalized_url), timeout=correct_timeout)
                 if err_count == 3:
                     print(f"Failed to fetch page {node.url} after 3 attempts.")
                     return

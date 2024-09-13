@@ -68,7 +68,7 @@ async def build_and_parse_tree(restaurants: list, address: str, lookup_radius: i
                             tree = await crawler.start_crawling(new_link, d_limit=3)
                             
                             print("Parsing tree...")
-                            tree = await scraper.start_dfs(tree)
+                            tree = await scraper.traversal_manager.start_dfs(tree)
                             
                             if tree:
                                 # a tree was returned...

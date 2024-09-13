@@ -2,12 +2,16 @@ import os
 import re
 import numpy as np
 import asyncio  # Add asyncio
+import aiohttp
 import pandas as pd
 import sqlite3, json
 from tqdm import tqdm
 from typing import List, Optional
 from urllib.parse import urljoin, urlparse
 from datetime import datetime, timezone
+from sklearn.metrics.pairwise import cosine_similarity
+from collections import defaultdict, OrderedDict
+from bs4 import BeautifulSoup, Comment
 
 
 SPECIAL_WORDS = ['menu', 'food', 'drink', 'lunch', 'dinner', 'breakfast', 'ingredient', 'dish', 'restaurant', 
