@@ -3,7 +3,6 @@ from backend import webnode
 from backend import webscraper
 from backend import webcrawler
 from backend import item_matcher
-from _db_helper import __DELETER_
 
 import asyncio, json
 
@@ -15,7 +14,10 @@ target_attributes = {
     "ingredient_2": ["parmesan", "mozzarella"],
     "ingredient_3": ["marinara", "tomato", "red"],
 }
-target_threshold = .75
+target_threshold = .75 # strict
+target_threshold = .7  # sounds good!
+# target_thxreshold = .6 # very... explorative:)
+
 
 # Global Variables (TODO: Move to _util.py)
 similarity_threshold = 0.550 # Ignore any linkes with embedding cos-similarity less than this
@@ -31,7 +33,6 @@ try:
 except Exception as e:
     print(f"Error: {e}")
     old_trees = {}
-
 
 
 async def build_and_parse_tree(restaurants: list, address: str, lookup_radius: int):
@@ -76,7 +77,7 @@ async def build_and_parse_tree(restaurants: list, address: str, lookup_radius: i
                                     # Lets see if we can find our item!
                                     results = await menu_item_matcher.run_hybrid_similarity_tests(tree.menu_book)
                                     for result in results:
-                                        if result['combined_score'] > .6 or 'Chicken Parmesan Pizza' in result['menu_item'] :
+                                        if result['combined_score'] > target_threshold or 'Chicken Parmesan Pizza' in result['menu_item']:
                                             print(f"Menu Item: {result['menu_item']}")
                                             print(f"Ingredients: {', '.join(result['ingredients'])}")
                                             print(f"Combined Similarity Score: {result['combined_score']:.4f}")
@@ -110,12 +111,11 @@ async def build_and_parse_tree(restaurants: list, address: str, lookup_radius: i
 # Define search parameters
 address = "Houston, Texas"
 restaurant_names_base = ["Pappadeaux Seafood Kitchen", "Dunkin Donuts", "McDonalds", "Whataburger", "Starbucks", "Taco Bell", "Chick-fil-A", "Cocohodo"]
-restaurant_names_common = ['Denny\'s', 'IHOP', 'Buffalo Wild Wings', 'The Capital Grille', 'Texas Roadhouse', 'Outback Steakhouse', 'Fogo de Chão', 'Steak 48', 'Pappadeaux Seafood Kitchen', 'The Cheesecake Factory', 'Morton\'s The Steakhouse', 'Chama Gaucha Brazilian Steakhouse', 'Saltgrass Steakhouse', 'Pappas Bros. Steakhouse', 'Vic & Anthony\'s', 'Brennan’s of Houston', 'Fleming\'s Prime Steakhouse', 'Lucille\'s', 'Cracker Barrel', 'Kenny & Ziggy\'s', 'Turner\'s', 'Chili\'s', 'Ruth\'s Chris Steak House', 'BJ\'s Restaurant & Brewhouse', 'The Melting Pot', 'Nancy\'s Hustle', 'Red Lobster', 'Maggiano\'s Little Italy', 'Olive Garden', 'Yard House']
-restaurant_names_common_2 = ['Perry’s Steakhouse & Grille', 'The Palm', 'Seasons 52', 'Bonefish Grill', 'Grimaldi’s Pizzeria', 'Black Walnut Cafe', 'The Union Kitchen', 'Gringo’s Mexican Kitchen', 'Eddie V’s Prime Seafood', 'Landry’s Seafood House', 'Razzoo’s Cajun Cafe', 'PF Chang\'s', 'Mastro\'s Steakhouse', 'Yia Yia Mary\'s Pappas Greek Kitchen', 'Grotto Ristorante', 'Truluck\'s Seafood Steak & Crab House', 'Carrabba’s Italian Grill', 'Cyclone Anaya’s Tex-Mex Cantina', 'Del Frisco\'s Double Eagle Steakhouse', 'LongHorn Steakhouse', 'Papa John’s Pizza', 'Bubba Gump Shrimp Co.', 'Rudy’s “Country Store” and Bar-B-Q', 'Chipotle Mexican Grill', 'Topgolf', 'Pappasito’s Cantina', 'Saltgrass Steakhouse', 'Five Guys', 'Ninfa\'s on Navigation', 'Torchy\'s Tacos']
+restaurant_names_common = ['Denny\'s', 'IHOP', 'Buffalo Wild Wings', 'The Capital Grille', 'Texas Roadhouse', 'Outback Steakhouse', 'Fogo de Chão', 'Steak 48', 'Pappadeaux Seafood Kitchen', 'The Cheesecake Factory', 'Morton\'s The Steakhouse', 'Chama Gaucha Brazilian Steakhouse', 'Saltgrass Steakhouse', 'Pappas Bros. Steakhouse', 'Vic & Anthony\'s', 'Brennan\'s of Houston', 'Fleming\'s Prime Steakhouse', 'Lucille\'s', 'Cracker Barrel', 'Kenny & Ziggy\'s', 'Turner\'s', 'Chili\'s', 'Ruth\'s Chris Steak House', 'BJ\'s Restaurant & Brewhouse', 'The Melting Pot', 'Nancy\'s Hustle', 'Red Lobster', 'Maggiano\'s Little Italy', 'Olive Garden', 'Yard House']
+restaurant_names_common_2 = ['Perry\'s Steakhouse & Grille', 'The Palm', 'Seasons 52', 'Bonefish Grill', 'Grimaldi\'s Pizzeria', 'Black Walnut Cafe', 'The Union Kitchen', 'Gringo\'s Mexican Kitchen', 'Eddie V\'s Prime Seafood', 'Landry\'s Seafood House', 'Razzoo\'s Cajun Cafe', 'PF Chang\'s', 'Mastro\'s Steakhouse', 'Yia Yia Mary\'s Pappas Greek Kitchen', 'Grotto Ristorante', 'Truluck\'s Seafood Steak & Crab House', 'Carrabba\'s Italian Grill', 'Cyclone Anaya\'s Tex-Mex Cantina', 'Del Frisco\'s Double Eagle Steakhouse', 'LongHorn Steakhouse', 'Papa John\'s Pizza', 'Bubba Gump Shrimp Co.', 'Rudy\'s “Country Store” and Bar-B-Q', 'Chipotle Mexican Grill', 'Topgolf', 'Pappasito\'s Cantina', 'Saltgrass Steakhouse', 'Five Guys', 'Ninfa\'s on Navigation', 'Torchy\'s Tacos']
 restaurant_names_niche = ['Theodore Rex', 'Lucille\'s', 'The Breakfast Klub', 'Crawfish & Noodles', 'POST Houston', 'Kiran\'s', 'B&B Butchers', 'Squable', 'The Blind Goat', 'Feges BBQ', 'Huynh Restaurant', 'Pinkerton\'s Barbecue', 'Kâu Ba', 'Armando\'s', 'Phat Eatery', 'Le Jardinier', 'Elro Pizza + Crudo', 'State of Grace', 'Nancy\'s Hustle', 'Pappadeaux Seafood Kitchen', 'Truth BBQ', 'Bludorn', 'Kenny & Ziggy\'s', 'Tris', 'Rosalie Italian Soul', 'Xochi', 'Killen\'s Barbecue', 'Backstreet Café', 'Les Noodle', 'Uchi']
-restaurant_names = restaurant_names_niche + restaurant_names_base + restaurant_names_common
+restaurant_names = restaurant_names_niche + restaurant_names_base + restaurant_names_common + restaurant_names_common_2
 
-# restaurant_names = restaurant_names_common_2
 webpage_timeout = 15000 # milliseconds
 radius = 50000
 
