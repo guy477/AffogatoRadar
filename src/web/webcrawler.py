@@ -1,11 +1,11 @@
 # webcrawler.py
-
-import asyncio
-from collections import deque
+from _utils._util import *
 from .webscraper import WebScraper
 from .webnode import WebNode
+
+from collections import deque
 from rich.console import Console
-from urllib.parse import urlparse, urljoin
+
 
 class WebCrawler:
     def __init__(self, storage_dir: str = "../data", use_cache=True, scraper=None, max_concurrency=8):

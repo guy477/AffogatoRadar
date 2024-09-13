@@ -1,11 +1,10 @@
-from backend import back_main
-from backend import webnode
-from backend import webscraper
-from backend import webcrawler
+from _utils._util import *
+
+from backend import restaurant_finder
 from backend import item_matcher
-
-import asyncio, json
-
+from web import webnode
+from web import webscraper
+from web import webcrawler
 
 # what are we looking for?
 target_attributes = {
@@ -14,8 +13,8 @@ target_attributes = {
     "ingredient_2": ["parmesan", "mozzarella"],
     "ingredient_3": ["marinara", "tomato", "red"],
 }
-target_threshold = .75 # strict
-target_threshold = .7  # sounds good!
+target_threshold = .80 # strict, very likely to be a chicken parmesan
+target_threshold = .75 # -> .70  # same ingredients, but not exclusively Chicken Parmesans! (or maybe a weirdly named chicken parmesan)
 # target_thxreshold = .6 # very... explorative:)
 
 
@@ -37,6 +36,7 @@ except Exception as e:
 
 async def build_and_parse_tree(restaurants: list, address: str, lookup_radius: int):
     # Initialize local storage
+    restaurant_menu_loc = restaurant_finder.RestaurantMenuLocator()
     scraper = webscraper.WebScraper(use_cache=use_cache, max_concurrency=max_concurrency, webpage_timeout=webpage_timeout, similarity_threshold=similarity_threshold)
     crawler = webcrawler.WebCrawler(storage_dir="../data", use_cache=use_cache, scraper=scraper, max_concurrency=max_concurrency)
     menu_item_matcher = item_matcher.MenuItemMatcher(target_attributes)
@@ -48,7 +48,7 @@ async def build_and_parse_tree(restaurants: list, address: str, lookup_radius: i
     for restaurant_name in restaurants:
             # try:
                 # Search for restaurant nearby (check cache first)
-            restaurant_data = back_main.search_restaurants_nearby(address, restaurant_name, lookup_radius)
+            restaurant_data = restaurant_menu_loc.search_restaurants_nearby(address, restaurant_name, lookup_radius)
             if restaurant_data and restaurant_data['results']:
                 restaurant_data = list(restaurant_data['results'])
 
@@ -57,7 +57,7 @@ async def build_and_parse_tree(restaurants: list, address: str, lookup_radius: i
                 while restaurant_data and good_local_trees < 2:
                     first_restaurant = restaurant_data.pop(0)
                     place_id = first_restaurant['place_id']
-                    menu_link = back_main.get_menu(place_id)
+                    menu_link = restaurant_menu_loc.get_menu(place_id)
 
                     if menu_link:
                         print(f"Menu link: {menu_link}")

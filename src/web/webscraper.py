@@ -1,14 +1,11 @@
 # webscraper.py
-from urllib.parse import urljoin, urlparse
+from _utils._util import *
+from backend.local_storage import *
+from backend.llm import *
 
-import asyncio
-from playwright.async_api import async_playwright, Browser, Page
-
-from bs4 import BeautifulSoup, Comment, Tag
-from ._util import *
-from .local_storage import *
-from .llm import *
-from collections import OrderedDict, deque
+from playwright.async_api import async_playwright, Page
+from bs4 import BeautifulSoup, Comment
+from collections import OrderedDict
 
 
 class WebScraper:
@@ -49,14 +46,14 @@ class WebScraper:
 
     async def fetch_webpage_with_js(self, url):
         """Fetch the webpage with JavaScript execution using a persistent Playwright instance."""
-        # Start Playwright if it's not already running
-        await self.start_playwright()
-
         # Check the cache first
         redirect_url = self.source_dest.get_data_by_hash(url)
         if self.use_cache and redirect_url:
             # print(f"Returning cached page for {url}")
             return self.url_to_html.get_data_by_hash(redirect_url)
+
+        # Start Playwright if it's not already running
+        await self.start_playwright()
 
         # Reuse browser page or open a new one
         page: Page = await self.browser.new_page()
@@ -102,6 +99,43 @@ class WebScraper:
         finally:
             if not page.is_closed():
                 await page.close()
+
+    def parse_menu_output(self, llm_output: str) -> dict:
+        pattern = r"(.+?):(.*)"
+        menu_dict = {}
+        for match in re.findall(pattern, llm_output):
+            item = match[0].strip()
+            ingredients = match[1].strip()
+            if ingredients.lower() == 'n/a':
+                ingredients_list = []
+            else:
+                ingredients_list = [ingredient.strip() for ingredient in ingredients.split("|")]
+            menu_dict[item] = ingredients_list
+        return menu_dict
+
+    async def extract_menu_items(self, html):
+        """
+        Asynchronous extraction of menu items from HTML using LLM.
+        """
+        prompt = PROMPT_HTML_EXTRACT.format(html)
+        messages = [{"role": "user", "content": prompt}]
+        responses = await self.llm.chat(messages, n=1)
+
+        # clean the response up
+        for i, _ in enumerate(responses):
+            while '```output\n' in responses[i]:
+                responses[i] = responses[i].replace('```output\n', '').strip()
+            while '```output' in responses[i]:
+                response = responses[i].replace('```outupt', '').strip()
+            while '\n```' in responses[i]:
+                responses[i] = responses[i].replace('\n```', '').strip()
+            while '```' in responses[i]:
+                responses[i] = responses[i].replace('```', '').strip()
+
+        responses = [self.parse_menu_output(response) for response in responses]
+        responses = [response for response in responses if response]
+
+        return responses[-1] if responses else {}
 
     def find_menu_link_html(self, html_content):
         """Extract the menu link from the HTML content."""
@@ -192,7 +226,7 @@ class WebScraper:
                 filtered_html = self.filter_html_for_menu(html)
                 
                 # Extract the menu items using LLM
-                menu_items = await self.llm.extract_menu_items(filtered_html)
+                menu_items = await self.extract_menu_items(filtered_html)
                 node.menu_items = menu_items
                 semaphored = 1
 
@@ -296,56 +330,62 @@ class WebScraper:
         """
         # Parse out the path from the full URL
         path = urlparse(full_url).path
-        special_words = ['menu', 'food', 'drink', 'lunch', 'dinner', 'breakfast', 'ingredient', 'dish', 'restaurant', 
-                         'cuisine', 'recipe', 'meal', 'special', 'offer', 'chef', 'kitchen', 'reservation', 'order',
-                         'table', 'dining', 'bar', 'cocktail', 'appetizer', 'entree', 'dessert', 'wine', 'beer', 'beverage',
-                         'alcohol', 'non-alcoholic', 'drink', 'snack', 'side', 'starter', 'main', 'course', 'buffet', 'brunch']
+
         
         # Check if any of the special words exist in the path
-        for special_word in special_words:
+        for special_word in SPECIAL_WORDS:
             if special_word in path:
                 return True
         return False
 
-    async def satisfies_llm_criteria(self, full_url):
+    async def find_url_relevance(self, urls):
         """
-        Sends the full URL to the LLM for analysis and determines if it satisfies the criteria.
+        Asynchronous URL filtering based on similarity to target keywords.
         """
-        # Parse the path from the full URL
-        path = urlparse(full_url).path
+        if not urls:
+            return []
 
-        prompt_gpt35 = {"role": "user", "content": f"""
-You are tasked with identifying relevant URLs from a restaurant website that suggest food-related content. Focus on links that point to pages related to 'menus', 'food items', 'meals', or similar content. Look for URL patterns that contain:
-- The word 'menu'
-- Keywords like 'breakfast', 'lunch', 'dinner', 'desert', 'food', or 'drink'
+        # Extract path components for each URL
+        url_components = [segment for url in urls for segment in url.split("/") if segment]
 
-Given this URL Path: {path}
+        # Get embeddings for URL components and target keywords
+        url_component_embeddings = await self.llm.get_embeddings(url_components)
+        keyword_embeddings = await self.llm.get_embeddings(TARGET_URL_KEYWORDS) ## NOTE: TARGET_URL_KEYWORDS IS UPDATED IN `_UTILS.PY`
 
-Respond with "YES" if the URL is relevant, or "NO" if it is not.
-"""}
-        
-        async with self.node_lock:
-            if self.use_cache and self.llm_relevance.get_data_by_hash(full_url):
-                cached_data = json.loads(self.llm_relevance.get_data_by_hash(full_url))['yes_no']
-                return cached_data[0] > cached_data[1]
+        if url_component_embeddings is None or keyword_embeddings is None:
+            return []
 
-        responses = await self.llm.chat([prompt_gpt35], n=5)
+        # Compute cosine similarity between URL components and keywords
+        similarities = cosine_similarity(url_component_embeddings, keyword_embeddings)
 
-        N_YES = 0
-        N_NO = 0
+        # Calculate max similarity for each URL based on its components
+        idx = 0
+        relevant_urls = []
+        for url in urls:
+            components = [segment for segment in url.split("/") if segment]
+            num_components = len(components)
 
-        for response in responses:
-            if 'YES' in response:
-                N_YES += 1
-            if 'NO' in response:
-                N_NO += 1
-    
-        async with self.node_lock:
-            self.llm_relevance.save_data(full_url, json.dumps({'yes_no': (N_YES, N_NO)}))
-            print(f"Caching LLM Relevance For {full_url}")
-    
-        return N_YES > N_NO
+            if num_components == 0:
+                relevant_urls.append((url, 0))  # No components to compare, similarity is 0
+                continue
 
+            # Extract the relevant part of the similarity matrix for this URL
+            url_similarities = similarities[idx:idx + num_components]
+            idx += num_components
+
+            if url_similarities.size == 0:
+                relevant_urls.append((url, 0))  # No similarity values, similarity is 0
+                continue
+            
+            # For each component, get the max similarity (highest value in the row)
+            max_per_component = np.max(url_similarities, axis=1)
+            
+            # Get the max similarity for the entire URL
+            max_similarity = np.max(max_per_component) if max_per_component.size > 0 else 0
+            
+            relevant_urls.append((url, max_similarity))
+
+        return relevant_urls
 
     async def satisfies_embedding_criteria(self, full_urls):
         """
@@ -357,7 +397,6 @@ Respond with "YES" if the URL is relevant, or "NO" if it is not.
         Returns:
             list: URLs that match the target keywords, with the base path excluded.
         """
-        target_keywords = ['menu', 'menus', '...menu...', '...menus...', 'food', '...food...', 'drink', '...drink...', 'lunch', '...lunch...', 'dinner', '...dinner...', 'desert', '...desert...', 'breakfast', '...breakfast...', 'nutrition', '...nutrition', 'ingredients', '...ingredients...']
 
         if self.use_cache:
             async with self.node_lock:
@@ -368,7 +407,7 @@ Respond with "YES" if the URL is relevant, or "NO" if it is not.
             full_urls = [url for url in full_urls]
             hashed_data = []
         
-        relevant_urls = await self.llm.find_url_relevance(full_urls, target_keywords)
+        relevant_urls = await self.find_url_relevance(full_urls)
         
         for relevant_url in relevant_urls:
             async with self.node_lock:
@@ -388,8 +427,6 @@ Respond with "YES" if the URL is relevant, or "NO" if it is not.
 
         # Process URLs based on full URLs - only embedding
         full_urls = await self.satisfies_embedding_criteria(full_urls)
-
-        # full_urls = [url for url in full_urls if self.satisfies_special_words(url) or await self.satisfies_llm_criteria(url)]
 
         return full_urls
 

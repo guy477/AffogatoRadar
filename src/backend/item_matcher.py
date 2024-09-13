@@ -1,9 +1,9 @@
-import os
-import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
+from _utils._util import *
 from .local_storage import *
 from .llm import *
-import asyncio
+
+from sklearn.metrics.pairwise import cosine_similarity
+
 
 class MenuItemMatcher:
     def __init__(self, target_attributes, attribute_weights=None):
