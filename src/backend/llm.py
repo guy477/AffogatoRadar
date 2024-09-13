@@ -13,8 +13,9 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # Set up OpenAI API key globally
 
 class LLM:
-    def __init__(self, model="gpt-3.5-turbo", max_tokens=265, temperature=0.7):
-        self.model = model
+    def __init__(self, model_chat="gpt-3.5-turbo", model_embedding='text-embedding-3-large', max_tokens=265, temperature=0.7):
+        self.model_chat = model_chat
+        self.model_embedding = model_embedding
         self.max_tokens = max_tokens
         self.temperature = temperature
 
@@ -25,7 +26,7 @@ class LLM:
         try:
             response = await asyncio.to_thread(
                 client.chat.completions.create,
-                model=model or self.model,
+                model=model or self.model_chat,
                 messages=messages,
                 max_tokens=max_tokens or self.max_tokens,
                 temperature=temperature or self.temperature,
@@ -44,7 +45,7 @@ class LLM:
         try:
             embeddings = await asyncio.to_thread(
                 client.embeddings.create,
-                model="text-embedding-3-large",
+                model=self.model_embedding,
                 input=text_list
             )
 
@@ -135,7 +136,6 @@ Now, extract the menu items from the following HTML:
 {html}
 ```"""
         messages = [{"role": "user", "content": prompt}]
-
         responses = await self.chat(messages, n=1)
 
         # clean the response up
@@ -167,9 +167,13 @@ Now, extract the menu items from the following HTML:
             menu_dict[item] = ingredients_list
         return menu_dict
 
-    def set_default_model(self, model):
+    def set_default_chat_model(self, model):
         """Set the default model for all future calls."""
-        self.model = model
+        self.model_chat = model
+
+    def set_default_embedding_model(self, model):
+        """Set the default model for all future calls."""
+        self.model_embedding = model
 
     def set_default_temperature(self, temperature):
         """Set the default temperature for all future calls."""

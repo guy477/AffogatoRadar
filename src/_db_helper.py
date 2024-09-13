@@ -9,19 +9,19 @@ def __DELETER_(db_name, base_url_or_like):
     
     try:
         # Fetch all hash_key and idx pairs
-        storage.cursor.execute("SELECT hash_key, idx FROM place_id_map")
+        storage.cursor.execute("SELECT hash_key, data FROM data_dump")
         all_records = storage.cursor.fetchall()
         
         # Iterate over each record and remove the ones containing 'whataburger'
-        for hash_key, idx in all_records:
+        for hash_key, data_dump in all_records:
             if base_url_or_like in hash_key.lower():  # Case-insensitive check
                 print(f"Removing entry for: {hash_key}")
                 
                 # Delete from place_id_map
-                storage.cursor.execute("DELETE FROM place_id_map WHERE hash_key = ?", (hash_key,))
+                # storage.cursor.execute("DELETE FROM place_id_map WHERE hash_key = ?", (hash_key,))
                 
                 # Delete corresponding data in data_dump
-                storage.cursor.execute("DELETE FROM data_dump WHERE id = ?", (idx,))
+                storage.cursor.execute("DELETE FROM data_dump WHERE hash_key = ?", (hash_key,))
                 
                 # Commit changes
                 storage.conn.commit()
@@ -87,9 +87,16 @@ def filter_html_for_menu():
         return str(soup.body)
 
 if __name__ == "__main__":
+    __DUMPER_('embedding_target_menu.db')
+    __DUMPER_('addr_rest_rad_to_places.db')
     __DUMPER_('source_dest.db')
-    __DUMPER_('llm_relevance.db')
     __DUMPER_('url_to_html.db')
     __DUMPER_('url_to_menu.db')
     __DUMPER_('embedding_relevance.db')
     # print(filter_html_for_menu())
+
+    # __DELETER_('source_dest.db', 'sixtyvines')
+    # __DELETER_('llm_relevance.db', 'sixtyvines')
+    # __DELETER_('url_to_html.db', 'sixtyvines')
+    # __DELETER_('url_to_menu.db', 'sixtyvines')
+    # __DELETER_('embedding_relevance.db', 'sixtyvines')

@@ -114,6 +114,9 @@ class WebScraper:
     async def source_menu_link(self, google_maps_url):
         """Scrape the Google Maps URL, execute JavaScript, and find the menu link."""
         html_content = await self.fetch_webpage_with_js(google_maps_url)
+        if not html_content:
+            return None
+        
         menu_link = self.find_menu_link_html(html_content)
         if menu_link:
             print(f"Menu link found: {menu_link}")
@@ -183,6 +186,9 @@ class WebScraper:
                 # Fetch the webpage (cached) and extract menu items if not cached
                 html = await self.fetch_webpage_with_js(node.url)
 
+                if not html:
+                    return
+
                 filtered_html = self.filter_html_for_menu(html)
                 
                 # Extract the menu items using LLM
@@ -204,13 +210,19 @@ class WebScraper:
 
         # After processing all children, propagate the menu items to the parent
         async with self.node_lock:
-            for item, ingredients in node.menu_items.items():
-                node.menu_book[item].union(ingredients)
+            # First, accumulate children's menu_books
+            for child in node.children:
+                for item, ingredients in child.menu_book.items():
+                    node.menu_book[item].update(ingredients)  # Use update instead of union
 
+            # Then, add this node's own menu_items to its menu_book
+            for item, ingredients in node.menu_items.items():
+                node.menu_book[item].update(ingredients)  # Use update instead of union
+
+            # Now propagate the accumulated menu_book to the parent
             if parent:
                 for item, ingredients in node.menu_book.items():
-                    # print(f"Propagated {item}: {ingredients} to parent {parent.url}")
-                    parent.menu_book[item].union(ingredients)
+                    parent.menu_book[item].update(ingredients)  # Use update instead of union
 
             if semaphored:
                 # Save the extracted menu items in the cache using the node lock
@@ -234,16 +246,16 @@ class WebScraper:
         self.visited_urls.clear()
 
         # set llm model to provided model
-        model_temp = self.llm.model
+        model_temp = self.llm.model_chat
         max_tokens_temp = self.llm.max_tokens
-        self.llm.set_default_model(openai_model)
+        self.llm.set_default_chat_model(openai_model)
         self.llm.set_default_max_tokens(default_max_tokens)
 
         # start the dfs from the root_node
         await self.dfs_recursive(root_node)
 
         # reset llm model to default
-        self.llm.set_default_model(model_temp)
+        self.llm.set_default_chat_model(model_temp)
         self.llm.set_default_max_tokens(max_tokens_temp)
         return root_node
 
