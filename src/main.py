@@ -1,7 +1,5 @@
 # main.py
 
-import asyncio
-import json
 from _utils._util import *
 from backend import restaurant_finder, item_matcher
 from web import webnode, webscraper, webcrawler
@@ -107,15 +105,12 @@ async def build_and_parse_tree(restaurants, address, lookup_radius, old_trees):
     util_logger.info(f"Total trees after update: {len(old_trees)}")
     return old_trees
 
-def get_selected_restaurants():
-    """Combine all restaurant lists as needed."""
-    # You can modify the combination logic as required
-    return SELECTED_RESTAURANTS
 
 async def main():
     """Main function to orchestrate tree building and parsing."""
-    address = "Houston, Texas"
-    restaurants = get_selected_restaurants()
+    
+    address = SELECTED_ADDRESS # NOTE: SEE _utils/_config.py
+    restaurants = CURATED_PLACES # NOTE: SEE _utils/_config.py
 
     # Load existing trees
     old_trees = await load_old_trees()
