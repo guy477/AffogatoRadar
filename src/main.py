@@ -1,127 +1,133 @@
+# main.py
+
+import asyncio
+import json
 from _utils._util import *
+from backend import restaurant_finder, item_matcher
+from web import webnode, webscraper, webcrawler
 
-from backend import restaurant_finder
-from backend import item_matcher
-from web import webnode
-from web import webscraper
-from web import webcrawler
+async def load_old_trees(filepath='../data/_trees/trees.json'):
+    """Load existing trees from a JSON file."""
+    try:
+        with open(filepath, 'r') as f:
+            tree_data = json.load(f)
+            old_trees = {key: webnode.WebNode.from_dict(value) for key, value in tree_data.items()}
+            util_logger.info(f"Loaded {len(old_trees)} existing trees.")
+            return old_trees
+    except FileNotFoundError:
+        util_logger.warning(f"No existing tree file found at {filepath}. Starting fresh.")
+        return {}
+    except json.JSONDecodeError as e:
+        util_logger.error(f"JSON decode error: {e}. Starting with empty trees.")
+        return {}
+    except Exception as e:
+        util_logger.error(f"Unexpected error while loading trees: {e}. Starting with empty trees.")
+        return {}
 
-# what are we looking for?
-target_attributes = {
-    "name": ["chicken parmesan"],  # Full, common names of the menu item
-    "ingredient_1": ["chicken"],
-    "ingredient_2": ["parmesan", "mozzarella"],
-    "ingredient_3": ["marinara", "tomato", "red"],
-}
-target_threshold = .80 # strict, very likely to be a chicken parmesan
-target_threshold = .70 # -> .70  # same ingredients, but not exclusively Chicken Parmesans! (or maybe a weirdly named chicken parmesan)
-# target_thxreshold = .6 # very... explorative:)
+async def save_trees(trees, filepath='../data/_trees/trees.json'):
+    """Save trees to a JSON file."""
+    try:
+        with open(filepath, 'w') as f:
+            json.dump({k: v.to_dict() for k, v in trees.items()}, f, indent=4)
+            util_logger.info(f"Saved {len(trees)} trees to {filepath}.")
+    except Exception as e:
+        util_logger.error(f"Failed to save trees to {filepath}: {e}")
 
-
-# Global Variables (TODO: Move to _util.py)
-similarity_threshold = 0.550 # Ignore any linkes with embedding cos-similarity less than this
-max_concurrency = 4
-use_cache = True
-
-# Load old trees
-try:
-    with open('../data/_trees/trees.json', 'r') as f:
-        tree_data = json.load(f)
-        # old_trees = tree_data
-        old_trees = {_: webnode.WebNode.from_dict(tree_dict) for _, tree_dict in tree_data.items()}
-except Exception as e:
-    print(f"Error: {e}")
-    old_trees = {}
-
-
-async def build_and_parse_tree(restaurants: list, address: str, lookup_radius: int):
-    # Initialize local storage
+async def build_and_parse_tree(restaurants, address, lookup_radius, old_trees):
+    """Build and parse trees for the given restaurants."""
+    # Initialize components
     restaurant_menu_loc = restaurant_finder.RestaurantMenuLocator()
-    scraper = webscraper.WebScraper(use_cache=use_cache, max_concurrency=max_concurrency, webpage_timeout=webpage_timeout, similarity_threshold=similarity_threshold)
-    crawler = webcrawler.WebCrawler(storage_dir="../data", use_cache=use_cache, scraper=scraper, max_concurrency=max_concurrency)
-    scraped_item_matcher = item_matcher.ItemMatcher(target_attributes)
+    scraper = webscraper.WebScraper(
+        use_cache=USE_CACHE,
+        max_concurrency=MAX_CONCURRENCY,
+        webpage_timeout=WEBPAGE_TIMEOUT,
+        similarity_threshold=SIMILARITY_THRESHOLD
+    )
+    crawler = webcrawler.WebCrawler(
+        storage_dir="../data",
+        use_cache=USE_CACHE,
+        scraper=scraper,
+        max_concurrency=MAX_CONCURRENCY
+    )
+    scraped_item_matcher = item_matcher.ItemMatcher(TARGET_ATTRIBUTES)
     await scraped_item_matcher.precompute_attribute_embeddings()
-    
-    tree = None
-    trees = {}    
-    # try:
-    for restaurant_name in restaurants:
-            # try:
-                # Search for restaurant nearby (check cache first)
-            restaurant_data = restaurant_menu_loc.search_restaurants_nearby(address, restaurant_name, lookup_radius)
-            if restaurant_data and restaurant_data['results']:
-                restaurant_data = list(restaurant_data['results'])
 
+    trees = {}
+
+    for restaurant_name in restaurants:
+        util_logger.debug(f"Processing restaurant: {restaurant_name}")
+        try:
+            # Search for restaurant nearby
+            restaurant_data = restaurant_menu_loc.search_restaurants_nearby(address, restaurant_name, lookup_radius)
+            if restaurant_data and restaurant_data.get('results'):
+                restaurant_results = list(restaurant_data['results'])
                 good_local_trees = 0
-                
-                while restaurant_data and good_local_trees < 2:
-                    first_restaurant = restaurant_data.pop(0)
+
+                while restaurant_results and good_local_trees < 2:
+                    first_restaurant = restaurant_results.pop(0)
                     place_id = first_restaurant['place_id']
                     menu_link = restaurant_menu_loc.get_menu(place_id)
 
                     if menu_link:
-                        print(f"Menu link: {menu_link}")
+                        util_logger.info(f"Found menu link for {restaurant_name}: {menu_link}")
                         new_link = await scraper.source_menu_link(menu_link)
 
                         if new_link:
-                            print("Crawling Links & Building Tree...")
+                            util_logger.info(f"Crawling and building tree from link: {new_link}")
                             tree = await crawler.start_crawling(new_link, d_limit=3)
-                            
-                            print("Parsing tree...")
+
+                            util_logger.info("Parsing tree...")
                             tree = await scraper.traversal_manager.start_dfs(tree)
-                            
-                            if tree:
-                                # a tree was returned...
-                                if len(tree.menu_book) > 0:
-                                    # ... with accumulated menu items
-                                    # Lets see if we can find our item!
-                                    results = await scraped_item_matcher.run_hybrid_similarity_tests(tree.menu_book)
-                                    for result in results:
-                                        if result['combined_score'] > target_threshold or 'Chicken Parmesan Pizza' in result['scraped_item']:
-                                            print(f"Menu Item: {result['scraped_item']}")
-                                            print(f"Ingredients: {', '.join(result['ingredients'])}")
-                                            print(f"Combined Similarity Score: {result['combined_score']:.4f}")
-                                            print(f"Attribute Similarity Scores: {result['attribute_scores']}\n")
-                                    good_local_trees += 1
-                                    
+
+                            if tree and len(tree.menu_book) > 0:
+                                util_logger.debug(f"Menu items found: {len(tree.menu_book)}")
+                                results = await scraped_item_matcher.run_hybrid_similarity_tests(tree.menu_book)
+                                for result in results:
+                                    if result['combined_score'] > TARGET_THRESHOLDS['strict'] or 'Chicken Parmesan Pizza' in result['scraped_item']:
+                                        util_logger.info(f"Menu Item: {result['scraped_item']}")
+                                        util_logger.info(f"Ingredients: {', '.join(result['ingredients'])}")
+                                        util_logger.info(f"Combined Similarity Score: {result['combined_score']:.4f}")
+                                        util_logger.info(f"Attribute Similarity Scores: {result['attribute_scores']}\n")
+                                good_local_trees += 1
+
                             trees[place_id] = tree
-                            print(f"Tree constructed and added to trees: (KEY)=`{place_id}`")
+                            util_logger.debug(f"Tree constructed and added with place_id: {place_id}")
                         else:
-                            print("No forward link found.")
+                            util_logger.warning("No forward link found after scraping.")
                     else:
-                        print("No source link available.")
+                        util_logger.warning("No source link available for this restaurant.")
+            else:
+                util_logger.warning(f"No restaurant data found for {restaurant_name}.")
 
-            if not restaurant_data and not tree:
-                print(f"No restaurants available not found. {restaurant_data}")
-        
-    #         except Exception as e:
-    #             print(f"Error With Restaurant ({restaurant_name}): {e}")
+        except Exception as e:
+            util_logger.error(f"Error processing restaurant '{restaurant_name}': {e}")
 
-    # except Exception as e:
-    #     print(f"CRITICAL ERROR: {e}")
-    
-    # finally:
-    #     # Close resources
-    #     await scraper.close()
-    #     await crawler.close()
-
-    print(trees)
+    # Update old trees with new ones
     old_trees.update(trees)
+    util_logger.info(f"Total trees after update: {len(old_trees)}")
+    return old_trees
 
-# Define search parameters
-address = "Houston, Texas"
-restaurant_names_base = ["Pappadeaux Seafood Kitchen", "Dunkin Donuts", "McDonalds", "Whataburger", "Starbucks", "Taco Bell", "Chick-fil-A", "Cocohodo"]
-restaurant_names_common = ['Denny\'s', 'IHOP', 'Buffalo Wild Wings', 'The Capital Grille', 'Texas Roadhouse', 'Outback Steakhouse', 'Fogo de Chão', 'Steak 48', 'Pappadeaux Seafood Kitchen', 'The Cheesecake Factory', 'Morton\'s The Steakhouse', 'Chama Gaucha Brazilian Steakhouse', 'Saltgrass Steakhouse', 'Pappas Bros. Steakhouse', 'Vic & Anthony\'s', 'Brennan\'s of Houston', 'Fleming\'s Prime Steakhouse', 'Lucille\'s', 'Cracker Barrel', 'Kenny & Ziggy\'s', 'Turner\'s', 'Chili\'s', 'Ruth\'s Chris Steak House', 'BJ\'s Restaurant & Brewhouse', 'The Melting Pot', 'Nancy\'s Hustle', 'Red Lobster', 'Maggiano\'s Little Italy', 'Olive Garden', 'Yard House']
-restaurant_names_common_2 = ['Perry\'s Steakhouse & Grille', 'The Palm', 'Seasons 52', 'Bonefish Grill', 'Grimaldi\'s Pizzeria', 'Black Walnut Cafe', 'The Union Kitchen', 'Gringo\'s Mexican Kitchen', 'Eddie V\'s Prime Seafood', 'Landry\'s Seafood House', 'Razzoo\'s Cajun Cafe', 'PF Chang\'s', 'Mastro\'s Steakhouse', 'Yia Yia Mary\'s Pappas Greek Kitchen', 'Grotto Ristorante', 'Truluck\'s Seafood Steak & Crab House', 'Carrabba\'s Italian Grill', 'Cyclone Anaya\'s Tex-Mex Cantina', 'Del Frisco\'s Double Eagle Steakhouse', 'LongHorn Steakhouse', 'Papa John\'s Pizza', 'Bubba Gump Shrimp Co.', 'Rudy\'s “Country Store” and Bar-B-Q', 'Chipotle Mexican Grill', 'Topgolf', 'Pappasito\'s Cantina', 'Five Guys', 'Ninfa\'s on Navigation', 'Torchy\'s Tacos']
-restaurant_names_niche = ['Lucille\'s', 'Theodore Rex', 'The Breakfast Klub', 'Crawfish & Noodles', 'POST Houston', 'Kiran\'s', 'B&B Butchers', 'Squable', 'The Blind Goat', 'Feges BBQ', 'Huynh Restaurant', 'Pinkerton\'s Barbecue', 'Kâu Ba', 'Armando\'s', 'Phat Eatery', 'Le Jardinier', 'Elro Pizza + Crudo', 'State of Grace', 'Nancy\'s Hustle', 'Truth BBQ', 'Bludorn', 'Tris', 'Rosalie Italian Soul', 'Xochi', 'Killen\'s Barbecue', 'Backstreet Café', 'Les Noodle', 'Uchi']
-restaurant_names = restaurant_names_common_2 # + restaurant_names_base + restaurant_names_common + restaurant_names_common_2
+def get_selected_restaurants():
+    """Combine all restaurant lists as needed."""
+    # You can modify the combination logic as required
+    return SELECTED_RESTAURANTS
 
-webpage_timeout = 15000 # milliseconds
-radius = 50000
+async def main():
+    """Main function to orchestrate tree building and parsing."""
+    address = "Houston, Texas"
+    restaurants = get_selected_restaurants()
 
-# Run the main function
-asyncio.run(build_and_parse_tree(restaurants=restaurant_names, address=address, lookup_radius=radius))
+    # Load existing trees
+    old_trees = await load_old_trees()
 
-# After constructing the trees
-with open('../data/_trees/trees.json', 'w') as f:
-    json.dump({k: v.to_dict() for k, v in old_trees.items()}, f, indent=4) 
+    # Build and parse trees
+    updated_trees = await build_and_parse_tree(restaurants, address, LOOKUP_RADIUS, old_trees)
+
+    # Save updated trees
+    await save_trees(updated_trees)
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        util_logger.critical(f"Program terminated unexpectedly: {e}")
