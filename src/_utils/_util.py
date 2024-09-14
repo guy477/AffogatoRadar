@@ -13,6 +13,44 @@ from sklearn.metrics.pairwise import cosine_similarity
 from collections import defaultdict, OrderedDict
 from bs4 import BeautifulSoup, Comment
 
+import logging
+from logging.handlers import RotatingFileHandler
+
+# --------------------- Logging Configuration ---------------------
+
+# Create a logger for the utilities module
+util_logger = logging.getLogger('log')
+util_logger.setLevel(logging.WARNING)  # Set to DEBUG to capture all levels
+
+# Define log format
+log_format = logging.Formatter(
+    fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+
+# File handler for DEBUG and higher with rotation
+file_handler = RotatingFileHandler(
+    filename='../logging/log.log',
+    mode='a',
+    maxBytes=5*1024*1024,  # 5 MB
+    backupCount=3,
+    encoding='utf-8',
+    delay=0
+)
+
+file_handler.setLevel(logging.WARNING)
+file_handler.setFormatter(log_format)
+
+# Avoid adding multiple handlers if they already exist
+if not util_logger.handlers:
+    util_logger.addHandler(file_handler)
+
+# Optional: Prevent logs from being propagated to the root logger
+util_logger.propagate = False
+
+# --------------------- End of Logging Configuration ---------------------
+
 
 TARGET_URL_KEYWORDS = [
                 'menu', 'food', 'drink', 'bar', 'lunch', 'dinner', 'brunch', 'dessert', 'breakfast', 'nutrition', 'ingredients',
