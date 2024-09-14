@@ -42,10 +42,6 @@ class WebCrawler:
         """Process a single node, fetch its content, and enqueue child nodes."""
         normalized_url = self.normalize_url(node.url)
 
-        # Skip processing if the node is the root node and it's already been processed
-        if normalized_url == self.root_normalized_url and depth > 0:
-            return
-
         html = None
         final_url = None
         subpage_links = []
@@ -82,16 +78,19 @@ class WebCrawler:
             # Normalize final_url after redirection and mark it as visited
             if final_url:
                 normalized_final_url = self.normalize_url(final_url)
-                if not await self.is_visited(normalized_final_url):
-                    await self.mark_as_visited(normalized_final_url)
-                    # If the final URL is the root URL and not the initial processing, skip
-                    if normalized_final_url == self.root_normalized_url and depth > 0:
-                        return
+                if await self.is_visited(normalized_final_url):
+                    return
+                
+                await self.mark_as_visited(normalized_final_url)
+                # If the final URL is in the root URL, skip
+                if normalized_final_url in self.root_normalized_url and depth > 0:
+                    return
 
             if not self.scraper.web_fetcher.is_pdf_url(final_url):
                 subpage_links = await self.scraper.find_subpage_links(normalized_url, html)
 
         for link in subpage_links:
+            # get normalized url
             normalized_link = self.normalize_url(link, base_url=normalized_url)
 
             # Skip if depth limit is reached
@@ -104,7 +103,13 @@ class WebCrawler:
 
             # Mark the link as visited before enqueuing to prevent race conditions
             await self.mark_as_visited(normalized_link)
-            
+
+            # cycle
+            if link in normalized_url:
+                print(f"Warning: cycle for link: {link}<|-{normalized_url.replace(link, '')}-|>")
+                continue
+
+
             child_node = WebNode(url=normalized_link, descriptor=f"{normalized_link}")
             async with self.node_lock:
                 node.add_child(child_node)

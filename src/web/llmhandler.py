@@ -43,11 +43,35 @@ class LLMHandler:
         return embeddings
 
     async def find_url_relevance(self, urls):
+        print('Calculating URL relevance (this can take a while)....')
+
         if not urls:
             return []
 
-        # Split the URLs on '/', '.', '_', and '-'
-        url_components = [segment for url in urls for segment in re.split(r'[/._-]', url) if segment]
+        # Extract components after the base URL
+        def extract_url_components(url):
+            parsed_url = urlparse(url)
+            path_components = parsed_url.path.split('/')[1:]  # Ignore the first empty component
+            query_components = parsed_url.query.split('&') if parsed_url.query else []
+            fragment_components = [parsed_url.fragment] if parsed_url.fragment else []
+            return path_components + query_components + fragment_components
+
+        # Extract and flatten URL components
+        url_components = [
+            component
+            for url in urls
+            for component in extract_url_components(url)
+            if component
+        ]
+
+        # Further split components on '.', '_', and '-'
+        url_components = [
+            segment
+            for component in url_components
+            for segment in re.split(r'[._-]', component)
+            if segment
+        ]
+
         url_component_embeddings = await self.get_embeddings(url_components)
         keyword_embeddings = await self.get_embeddings(TARGET_URL_KEYWORDS)
 
@@ -60,9 +84,8 @@ class LLMHandler:
         relevant_urls = []
         idx = 0
         for url in urls:
-            # Split each URL into components
-            components = [segment for segment in re.split(r'[/._-]', url) if segment]
-            num_components = len(components)
+            components = extract_url_components(url)
+            num_components = sum(len(re.split(r'[._-]', component)) for component in components)
 
             if num_components == 0:
                 relevant_urls.append((url, 0))
