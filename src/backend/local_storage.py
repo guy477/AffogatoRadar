@@ -52,7 +52,7 @@ class LocalStorage:
                 util_logger.debug("Data found for hash_key='%s'", hash_key)
                 return fetched[0]  # Return JSON data as string
             else:
-                util_logger.warning("No data found for hash_key='%s'", hash_key)
+                util_logger.info("No data found for hash_key='%s'; %s", hash_key, self.db_path)
                 return None
         except sqlite3.Error as e:
             util_logger.error("SQLite error while retrieving data for hash_key='%s': %s", hash_key, str(e))

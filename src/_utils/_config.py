@@ -42,7 +42,7 @@ TARGET_URL_KEYWORDS = [
                 'menu', 'food', 'drink', 'bar', 'lunch', 'dinner', 'brunch', 'dessert', 'breakfast', 'nutrition', 'ingredients',
                 'order', 'takeout', 'delivery', 'specials', 'catering', 'beverages', 'wine', 'cocktails', 'dish', 'restaurant',
                 'happy-hour', 'reservation', 'meals', 'sides', 'entrees', 'appetizers', 'cuisine', 'dining', 'snack', 'side', 'starter',
-                'buffet',
+                'buffet'
             ]
 
 
@@ -79,11 +79,15 @@ TARGET_ATTRIBUTES = {
     "ingredient_2": ["parmesan", "mozzarella"],
     "ingredient_3": ["marinara", "tomato", "red"],
 }
+
+
 TARGET_THRESHOLDS = {
-    "strict": 0.80,  # Very likely to be a chicken parmesan
-    "lenient": 0.70,  # Same ingredients, but not exclusively Chicken Parmesans
-    "explorative": 0.60,  # Very explorative
+    "STRICT": 0.80,  # Very likely to be a chicken parmesan
+    "LENIENT": 0.70,  # Same ingredients, but not exclusively Chicken Parmesans
+    "EXPLORATIVE": 0.60,  # Very explorative
 }
+
+TARGET_THRESHOLD = TARGET_THRESHOLDS['LENIENT']
 
 # <------------------------------------------------------------------------>
 

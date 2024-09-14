@@ -23,7 +23,7 @@ class LLMHandler:
                 prompt = PROMPT_HTML_EXTRACT.format("HTML content")  # Meta data instead of actual content
                 util_logger.debug("Using HTML extraction prompt.")
             
-            messages = [{"role": "user", "content": "Formatted prompt for extraction."}]  # Meta data
+            messages = [{"role": "user", "content": prompt}]  # Meta data
             util_logger.debug("Prepared messages for LLM chat.")
             
             responses = await self.llm.chat(messages, n=1)
@@ -97,70 +97,57 @@ class LLMHandler:
                 util_logger.warning("No URLs provided to find_url_relevance.")
                 return []
 
-            # Extract components after the base URL
-            def extract_url_components(url):
-                parsed_url = urlparse(url)
-                path_components = parsed_url.path.split('/')[1:]  # Ignore the first empty component
-                query_components = parsed_url.query.split('&') if parsed_url.query else []
-                fragment_components = [parsed_url.fragment] if parsed_url.fragment else []
-                components = path_components + query_components + fragment_components
-                util_logger.debug(f"Extracted {len(components)} components from URL: {url}")
-                return components
+            relevant_urls = []
 
-            # Extract and flatten URL components
-            url_components = [
-                component
-                for url in urls
-                for component in extract_url_components(url)
-                if component
-            ]
-            util_logger.info(f"Total URL components extracted: {len(url_components)}.")
-
-            # Further split components on '.', '_', and '-'
-            url_components = [
-                segment
-                for component in url_components
-                for segment in re.split(r'[._-]', component)
-                if segment
-            ]
-            util_logger.info(f"Total URL segments after splitting: {len(url_components)}.")
-
-            url_component_embeddings = await self.get_embeddings(url_components)
+            # Get embeddings for target keywords once
             keyword_embeddings = await self.get_embeddings(TARGET_URL_KEYWORDS)
-
-            if url_component_embeddings is None or keyword_embeddings is None:
-                util_logger.error("Embeddings retrieval failed for URL components or target keywords.")
+            if keyword_embeddings is None:
+                util_logger.error("Failed to retrieve embeddings for target keywords.")
                 return []
 
-            # Calculate similarities between all URL components and all keywords
-            similarities = cosine_similarity(url_component_embeddings, keyword_embeddings)
-            util_logger.info("Calculated cosine similarities between URL components and keywords.")
-
-            relevant_urls = []
-            idx = 0
             for url in urls:
-                components = extract_url_components(url)
-                num_components = sum(len(re.split(r'[._-]', component)) for component in components)
-                util_logger.debug(f"URL '{url}' has {num_components} segments for similarity calculation.")
+                util_logger.debug(f"Processing URL: {url}")
 
-                if num_components == 0:
+                # Extract meaningful segments from the URL
+                parsed_url = urlparse(url)
+                path_segments = [segment for segment in parsed_url.path.split('/') if segment]
+                query_params = parsed_url.query.split('&') if parsed_url.query else []
+                fragment = parsed_url.fragment.split('&') if parsed_url.fragment else []
+                components = path_segments + query_params + fragment
+
+                # Further split components on '.', '_', and '-'
+                segments = []
+                for component in components:
+                    split_segments = re.split(r'[._-]', component)
+                    segments.extend([seg for seg in split_segments if seg])
+
+                util_logger.debug(f"Extracted segments from URL '{url}': {segments}")
+
+                if not segments:
+                    util_logger.warning(f"No valid segments found for URL: {url}. Assigning similarity 0.")
                     relevant_urls.append((url, 0))
-                    util_logger.warning(f"No components found for URL: {url}. Assigning similarity 0.")
                     continue
 
-                # Get similarities for this URL's components
-                url_similarities = similarities[idx:idx + num_components]
-                idx += num_components
-
-                if url_similarities.size == 0:
+                # Get embeddings for URL segments
+                segment_embeddings = await self.get_embeddings(segments)
+                if segment_embeddings is None:
+                    util_logger.error(f"Failed to retrieve embeddings for URL segments of {url}. Assigning similarity 0.")
                     relevant_urls.append((url, 0))
-                    util_logger.warning(f"No similarities found for URL: {url}. Assigning similarity 0.")
                     continue
 
-                # Find the maximum similarity for this URL
-                max_similarity = np.max(url_similarities)
-                relevant_urls.append((url, max_similarity))
-                util_logger.debug(f"URL '{url}' has maximum similarity of {max_similarity}.")
+                # Calculate cosine similarities between segment embeddings and keyword embeddings
+                similarities = cosine_similarity(segment_embeddings, keyword_embeddings)
+                max_similarity = similarities.max() if similarities.size > 0 else 0
+
+                util_logger.debug(f"Max similarity for URL '{url}': {max_similarity}")
+
+                # Apply similarity threshold
+                if max_similarity >= SIMILARITY_THRESHOLD:
+                    relevant_urls.append((url, max_similarity))
+                    util_logger.info(f"URL '{url}' is relevant with similarity {max_similarity:.2f}.")
+                else:
+                    relevant_urls.append((url, max_similarity))
+                    util_logger.info(f"URL '{url}' is not relevant. Similarity {max_similarity:.2f} is below threshold.")
 
             util_logger.info("Completed URL relevance calculation.")
             return relevant_urls

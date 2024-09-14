@@ -81,7 +81,7 @@ async def build_and_parse_tree(restaurants, address, lookup_radius, old_trees):
                                 util_logger.debug(f"Menu items found: {len(tree.menu_book)}")
                                 results = await scraped_item_matcher.run_hybrid_similarity_tests(tree.menu_book)
                                 for result in results:
-                                    if result['combined_score'] > TARGET_THRESHOLDS['strict'] or 'Chicken Parmesan Pizza' in result['scraped_item']:
+                                    if result['combined_score'] > TARGET_THRESHOLD or 'Chicken Parmesan Pizza' in result['scraped_item']:
                                         util_logger.info(f"Menu Item: {result['scraped_item']}")
                                         util_logger.info(f"Ingredients: {', '.join(result['ingredients'])}")
                                         util_logger.info(f"Combined Similarity Score: {result['combined_score']:.4f}")

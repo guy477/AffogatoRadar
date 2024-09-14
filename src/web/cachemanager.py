@@ -23,7 +23,7 @@ class CacheManager:
             storage = getattr(self, storage_name)
             data = storage.get_data_by_hash(key)
             if data is None:
-                util_logger.warning(f"No data found in '{storage_name}' for key: {key}")
+                util_logger.debug(f"No data found in '{storage_name}' for key: {key}")
             else:
                 util_logger.debug(f"Data retrieved successfully from '{storage_name}' for key: {key}")
             return data

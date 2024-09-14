@@ -10,8 +10,8 @@ import asyncio
 
 
 class WebCrawler:
-    def __init__(self, storage_dir: str = "../data", use_cache=True, scraper=None, max_concurrency=8):
-        self.scraper = WebScraper(storage_dir, use_cache) if not scraper else scraper
+    def __init__(self, storage_dir: str = "../data", use_cache=True, scraper=None, max_concurrency=8, webpage_timeout=10000):
+        self.scraper = WebScraper(storage_dir, use_cache, webpage_timeout=webpage_timeout) if not scraper else scraper
         self.visited_urls = set()
         self.console = Console()
         self.visited_lock = asyncio.Lock()  # Lock to ensure exclusive access to visited_urls
@@ -23,7 +23,7 @@ class WebCrawler:
                      f"max_concurrency={max_concurrency}")
 
     def normalize_url(self, url, base_url=None):
-        """Normalize the URL by joining it with the base and stripping any trailing slashes."""
+        """Normalize the URL by joining it with the base and stripping any trailing slashes, queries, and fragments."""
         original_url = url
         url_ = url.strip()
         if base_url:
@@ -47,9 +47,10 @@ class WebCrawler:
             visited = url in self.visited_urls
             util_logger.debug(f"Checked if URL is visited: {url} -> {visited}")
             return visited
+        
 
     async def process_node(self, node, depth, d_limit, queue):
-        """Process a single node, fetch its content, and enqueue child nodes."""
+        """Process a single node, fetch its content, and enqueue child nodes."""        
         normalized_url = self.normalize_url(node.url)
         util_logger.info(f"Processing node: {normalized_url} at depth {depth}")
 
@@ -60,7 +61,7 @@ class WebCrawler:
         err_count = 0
         
         # Calculate correct timeout
-        correct_timeout = self.scraper.webpage_timeout * 3 // 1000  # Convert milliseconds to seconds
+        correct_timeout = self.scraper.webpage_timeout * 3 / 1000  # Convert milliseconds to seconds
 
         # Fetch the page content asynchronously, limiting concurrency with semaphore
         async with self.semaphore:
@@ -93,14 +94,10 @@ class WebCrawler:
             # Normalize final_url after redirection and mark it as visited
             if final_url:
                 normalized_final_url = self.normalize_url(final_url)
-                if await self.is_visited(normalized_final_url):
-                    util_logger.debug(f"Final URL already visited after redirection: {normalized_final_url}")
-                    return
-                
                 await self.mark_as_visited(normalized_final_url)
                 # If the final URL is in the root URL, skip
-                if normalized_final_url in self.root_normalized_url and depth > 0:
-                    util_logger.debug(f"Final URL {normalized_final_url} is within root URL and depth > 0. Skipping.")
+                if normalized_final_url == self.root_normalized_url and depth > 0:
+                    util_logger.debug(f"Final URL {normalized_final_url} is the root URL and depth > 0. Skipping.")
                     return
 
             if not self.scraper.web_fetcher.is_pdf_url(final_url):
@@ -124,52 +121,57 @@ class WebCrawler:
 
             await self.mark_as_visited(normalized_link)
 
-            if link in normalized_url:
+            if self.root_normalized_url and normalized_link == self.root_normalized_url:
                 util_logger.warning(f"Detected potential cycle for link: {link} in URL: {normalized_url}")
                 continue
 
             child_node = WebNode(url=normalized_link, descriptor=f"{normalized_link}")
             async with self.node_lock:
                 node.add_child(child_node)
-                queue.append((child_node, depth + 1))
-                util_logger.info(f"Enqueued child URL: {normalized_link} at depth {depth + 1}")
+            await queue.put((child_node, depth + 1))
+            util_logger.info(f"Enqueued child URL: {normalized_link} at depth {depth + 1}")
 
     async def crawl(self, root_node, d_limit):
         """Iteratively crawl subpages starting from the given root node using BFS."""
-        queue = deque([(root_node, 0)])  # Each entry is a tuple (node, depth)
+        queue = asyncio.Queue()
         normalized_url = self.normalize_url(root_node.url)
 
         # Store the root normalized URL for reference
         self.root_normalized_url = normalized_url
         util_logger.info(f"Starting crawl with root URL: {normalized_url} and depth limit: {d_limit}")
 
-        # Mark the root node as visited
+        # Mark the root node as visited and enqueue it
         await self.mark_as_visited(normalized_url)
+        await queue.put((root_node, 0))
 
-        tasks = set()
+        workers = []
+        for _ in range(self.semaphore._value):
+            worker = asyncio.create_task(self.worker(queue, d_limit))
+            workers.append(worker)
+            util_logger.debug(f"Worker {_+1} started.")
 
-        # While there are nodes to process in the queue or tasks are still running
-        while queue or tasks:
-            # Schedule new tasks as long as we have nodes in the queue and haven't hit concurrency limit
-            while queue and len(tasks) < self.semaphore._value:
-                node, depth = queue.popleft()
-                task = asyncio.create_task(self.process_node(node, depth, d_limit, queue))
-                tasks.add(task)
-                util_logger.info(f"Scheduled task for URL: {node.url} at depth {depth}")
+        await queue.join()
 
-            if tasks:
-                # Wait for any task to complete
-                done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-                tasks = pending
-
-                for task in done:
-                    try:
-                        task.result()  # Propagate exceptions if any
-                        util_logger.info(f"Task completed successfully.")
-                    except Exception as e:
-                        util_logger.error(f"Task failed with exception: {e}")
+        for worker in workers:
+            worker.cancel()
+        
+        # Ensure all workers are properly cancelled
+        await asyncio.gather(*workers, return_exceptions=True)
 
         util_logger.info("Crawling completed.")
+
+    async def worker(self, queue, d_limit):
+        """Worker task to process nodes from the queue."""
+        while True:
+            try:
+                node, depth = await queue.get()
+                await self.process_node(node, depth, d_limit, queue)
+                queue.task_done()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                util_logger.error(f"Unexpected error in worker: {e}")
+                queue.task_done()
 
     async def start_crawling(self, start_url, d_limit=2):
         """Start the crawling process from the root node asynchronously."""
@@ -196,6 +198,8 @@ class WebCrawler:
 
         return self.root_node
     
+
+
     async def close(self):
         """Close the WebScraper."""
         if self.scraper:

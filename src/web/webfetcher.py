@@ -93,13 +93,11 @@ class WebFetcher:
                 util_logger.info("Retry navigation to URL %s successful.", url)
             except Exception as e:
                 util_logger.error("Retry navigation failed for URL: %s. Error: %s", url, e)
-                await page.close()
-                return None, None  # Early exit if both attempts fail
 
         try:
             # Additional wait to ensure content is fully loaded
             util_logger.info("Waiting for network idle state for URL: %s", url)
-            await page.wait_for_load_state('networkidle', timeout=self.webpage_timeout / 4)
+            await page.wait_for_load_state('load', timeout=self.webpage_timeout / 4)
             
             # After resuming, retrieve the page content
             html_content = await page.content()

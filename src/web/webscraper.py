@@ -7,6 +7,7 @@ from .llmhandler import LLMHandler
 from .cachemanager import CacheManager
 from .traversalmanager import TraversalManager
 
+from urllib.robotparser import RobotFileParser
 
 class WebScraper:
     def __init__(self, storage_dir: str = "../data", use_cache=True, max_concurrency=10, webpage_timeout=1000, similarity_threshold=0.6):
@@ -17,6 +18,9 @@ class WebScraper:
         self.webpage_timeout = webpage_timeout
         self.similarity_threshold = similarity_threshold
         self.max_concurrency = max_concurrency
+
+        # Initialize robots.txt parsers cache
+        self.robots_parsers = {}  # Dictionary to store RobotFileParser instances per domain
 
         self.web_fetcher = WebFetcher(webpage_timeout=self.webpage_timeout)
         self.content_parser = ContentParser()
@@ -36,6 +40,11 @@ class WebScraper:
 
     async def fetch_and_cache_content(self, url):
         util_logger.info("Fetching content for URL: %s", url)
+
+        # Check robots.txt compliance
+        if not await self.is_compliant(url):
+            util_logger.info(f"URL disallowed by robots.txt: {url}. Skipping.")
+            return None, None
         
         # Check cache first
         redirect_url = self.cache_manager.get_cached_data('source_dest', url)
@@ -100,6 +109,73 @@ class WebScraper:
             util_logger.error("Error parsing HTML content for menu link. Error: %s", str(e))
             return None
 
+    async def is_compliant(self, url: str, user_agent: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0") -> bool:
+        """ 
+
+        Check if the URL is allowed to be crawled based on robots.txt.
+        
+        Args:
+            url (str): The URL to check.
+            user_agent (str): The user agent to check permissions against.
+        
+        Returns:
+            bool: True if allowed, False otherwise.
+        """
+        parsed_url = urlparse(url)
+        domain = parsed_url.netloc
+        path = parsed_url.path or '/'
+        
+        robot_parser = await self.fetch_robots_txt(domain, user_agent)
+        
+        if robot_parser is None:
+            # No robots.txt found or failed to fetch; assume allowed
+            util_logger.debug(f"No robots.txt parser for domain: {domain}. Assuming URL is allowed: {url}")
+            return True
+        
+        if 'google.com' in url or '/maps.' in url:
+            util_logger.debug(f"Google domain detected: {domain}. Assuming access is allowed VIA programmatic call: {url}")
+            return True
+        
+        is_allowed = robot_parser.can_fetch(user_agent, path)
+        util_logger.debug(f"robots.txt compliance for URL {url}: {is_allowed}")
+        return is_allowed
+    
+    async def fetch_robots_txt(self, domain: str, user_agent: str = '*') -> RobotFileParser:
+        """
+        Fetch and parse the robots.txt file for the given domain.
+        
+        Args:
+            domain (str): The domain to fetch robots.txt for.
+            user_agent (str): The user agent to check permissions against.
+        
+        Returns:
+            RobotFileParser: Parsed robots.txt rules for the domain.
+        """
+        if domain in self.robots_parsers:
+            util_logger.debug(f"robots.txt already fetched for domain: {domain}")
+            return self.robots_parsers[domain]
+        
+        robots_url = f"https://{domain}/robots.txt"
+        util_logger.info(f"Fetching robots.txt from: {robots_url}")
+        
+        robot_parser = RobotFileParser()
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(robots_url, timeout=self.webpage_timeout / 1000) as response:
+                    if response.status == 200:
+                        content = await response.text()
+                        robot_parser.parse(content.splitlines())
+                        util_logger.info(f"robots.txt fetched and parsed for domain: {domain}")
+                    else:
+                        util_logger.warning(f"Failed to fetch robots.txt for domain: {domain}, status: {response.status}. Assuming all URLs are allowed.")
+                        robot_parser = None  # No robots.txt available, allow all
+        except Exception as e:
+            util_logger.error(f"Error fetching robots.txt for domain: {domain}. Error: {e}. Assuming all URLs are allowed.")
+            robot_parser = None  # On error, allow all
+        
+        self.robots_parsers[domain] = robot_parser
+        return robot_parser
+
     async def find_subpage_links(self, url, html_content):
         util_logger.info("Finding subpage links in URL: %s", url)
         try:
@@ -112,11 +188,17 @@ class WebScraper:
                 href = a['href']
                 full_url = urljoin(url, href)
                 parsed_url = urlparse(full_url)
-                if parsed_url.netloc == base_domain and parsed_url.path:
+                # Ensure the link is from the same base domain and has a valid path
+                if parsed_url.netloc == base_domain and parsed_url.path and not full_url.startswith('#'):
                     subpage_links.append(full_url)
 
             subpage_links = list(OrderedDict.fromkeys(subpage_links))
             util_logger.info("Found %d unique subpage links before filtering.", len(subpage_links))
+
+            # Check if the subpage links are valid and not empty
+            if not subpage_links:
+                util_logger.warning("No subpage links found for URL: %s", url)
+                return []
 
             subpage_links = await self.satisfies_special_characteristics(subpage_links)
             util_logger.info("Number of subpage links after filtering: %d", len(subpage_links))
@@ -178,7 +260,7 @@ class WebScraper:
         except Exception as e:
             util_logger.error("Error applying special characteristics filtering. Error: %s", str(e))
             return []
-
+    
     async def close(self):
         util_logger.info("Closing WebScraper and releasing resources.")
         try:

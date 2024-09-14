@@ -40,7 +40,7 @@ file_handler = RotatingFileHandler(
     encoding='utf-8',
     delay=0
 )
-file_handler.setLevel(logging.INFO)
+file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(log_format)
 
 # Stream handler for DEBUG and higher (optional)
