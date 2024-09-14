@@ -44,12 +44,12 @@ class LocalStorage:
 
     def get_data_by_hash(self, hash_key):
         """Retrieve data from the cache using the hashed key."""
-        util_logger.info("Retrieving data for hash_key='%s'", hash_key)
+        util_logger.debug("Retrieving data for hash_key='%s'", hash_key)
         try:
             self.cursor.execute("SELECT data FROM data_dump WHERE hash_key = ?", (hash_key,))
             fetched = self.cursor.fetchone()
             if fetched:
-                util_logger.info("Data found for hash_key='%s'", hash_key)
+                util_logger.debug("Data found for hash_key='%s'", hash_key)
                 return fetched[0]  # Return JSON data as string
             else:
                 util_logger.warning("No data found for hash_key='%s'", hash_key)

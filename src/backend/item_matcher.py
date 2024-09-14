@@ -34,7 +34,7 @@ class ItemMatcher:
         # self.precompute_attribute_embeddings()
 
     async def get_phrase_embeddings(self, phrases):
-        util_logger.info("Fetching phrase embeddings.")
+        util_logger.debug("Fetching phrase embeddings.")
         embeddings = {}
         phrases_to_fetch = []
         cache_hits = 0
@@ -104,7 +104,7 @@ class ItemMatcher:
             return 0.0
 
     async def calculate_attribute_similarity(self, scraped_item_ingredients):
-        util_logger.info("Calculating attribute similarity.")
+        util_logger.debug("Calculating attribute similarity.")
         scraped_item_ngrams = self.get_ngrams(scraped_item_ingredients)
         util_logger.debug(f"Generated {len(scraped_item_ngrams)} n-grams from scraped item ingredients.")
 
@@ -116,7 +116,7 @@ class ItemMatcher:
             raise e
 
         attribute_similarity_scores = {}
-        util_logger.info(f"Calculating similarity scores for {len(self.target_attributes)} attributes.")
+        util_logger.debug(f"Calculating similarity scores for {len(self.target_attributes)} attributes.")
 
         for attribute, phrases in self.target_attributes.items():
             max_similarity = 0
@@ -134,11 +134,11 @@ class ItemMatcher:
             attribute_similarity_scores[attribute] = max_similarity
             util_logger.debug(f"Attribute '{attribute}' similarity score: {max_similarity:.4f}")
 
-        util_logger.info("Completed attribute similarity calculations.")
+        util_logger.debug("Completed attribute similarity calculations.")
         return attribute_similarity_scores
 
     async def calculate_target_similarity(self, scraped_item_name):
-        util_logger.info("Calculating target similarity based on item name.")
+        util_logger.debug("Calculating target similarity based on item name.")
         try:
             scraped_item_embedding = (await self.get_phrase_embeddings([scraped_item_name.lower()]))[scraped_item_name.lower()]
             util_logger.debug(f"Obtained embedding for scraped item name '{scraped_item_name.lower()}'.")

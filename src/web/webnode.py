@@ -19,7 +19,7 @@ class WebNode:
             raise TypeError("child_node must be an instance of WebNode")
         
         self.children.append(child_node)
-        util_logger.info(f"Added child WebNode. URL: {child_node.url}. Total children now: {len(self.children)}")
+        util_logger.debug(f"Added child WebNode. URL: {child_node.url}. Total children now: {len(self.children)}")
 
     def __repr__(self):
         return f"WebNode(url={self.url}, children={len(self.children)})"
@@ -38,7 +38,7 @@ class WebNode:
     def get_domain(self):
         """Return the domain of the URL."""
         domain = urlparse(self.url).netloc
-        util_logger.info(f"Extracted domain: {domain} from URL: {self.url}")
+        util_logger.debug(f"Extracted domain: {domain} from URL: {self.url}")
         return domain
 
     def visualize(self, parent_tree=None):
@@ -61,7 +61,7 @@ class WebNode:
 
     def to_dict(self):
         """Convert the WebNode object into a dictionary for serialization."""
-        util_logger.info(f"Serializing WebNode with URL: {self.url}")
+        util_logger.debug(f"Serializing WebNode with URL: {self.url}")
         serialized = {
             'url': self.url,
             'descriptor': self.descriptor,
@@ -77,7 +77,7 @@ class WebNode:
         """Load a WebNode object from a dictionary."""
         url = data.get('url')
         descriptor = data.get('descriptor')
-        util_logger.info(f"Deserializing WebNode from data with URL: {url}")
+        util_logger.debug(f"Deserializing WebNode from data with URL: {url}")
         
         if not url:
             util_logger.error("Missing 'url' in data during deserialization.")
@@ -89,5 +89,5 @@ class WebNode:
         children_data = data.get('children', [])
         util_logger.debug(f"Deserializing {len(children_data)} children for WebNode with URL: {url}")
         node.children = [WebNode.from_dict(child_data) for child_data in children_data]
-        util_logger.info(f"Deserialization complete for WebNode with URL: {url}")
+        util_logger.debug(f"Deserialization complete for WebNode with URL: {url}")
         return node
