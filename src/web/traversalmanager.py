@@ -44,14 +44,14 @@ class TraversalManager:
         async with self.node_lock:
             cached_scraped_items = self.cache_manager.get_cached_data('url_to_itemize', node.url)
             if cached_scraped_items:
-                util_logger.info("Cache hit for URL: %s", node.url)
+                util_logger.debug("Cache hit for URL: %s", node.url)
             else:
-                util_logger.info("Cache miss for URL: %s", node.url)
+                util_logger.debug("Cache miss for URL: %s", node.url)
 
         if cached_scraped_items:
             try:
                 node.scraped_items = json.loads(cached_scraped_items)
-                util_logger.info("Loaded scraped items from cache for URL: %s", node.url)
+                util_logger.debug("Loaded scraped items from cache for URL: %s", node.url)
             except json.JSONDecodeError as e:
                 util_logger.error("Failed to decode cached data for URL: %s - %s", node.url, str(e))
                 node.scraped_items = {}

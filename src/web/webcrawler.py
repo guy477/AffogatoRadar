@@ -32,7 +32,7 @@ class WebCrawler:
         normalized_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
         normalized_url = normalized_url.rstrip('/')
 
-        util_logger.info(f"Normalized URL from '{original_url}' to '{normalized_url}'")
+        util_logger.debug(f"Normalized URL from '{original_url}' to '{normalized_url}'")
         return normalized_url
 
     async def mark_as_visited(self, url):
@@ -67,13 +67,13 @@ class WebCrawler:
             try:
                 while not html and err_count < 3:
                     err_count += 1
-                    util_logger.info(f"Attempt {err_count} to fetch content for URL: {normalized_url}")
+                    util_logger.debug(f"Attempt {err_count} to fetch content for URL: {normalized_url}")
                     try:
                         final_url, html = await asyncio.wait_for(
                             self.scraper.fetch_and_cache_content(normalized_url),
                             timeout=correct_timeout
                         )
-                        util_logger.info(f"Successfully fetched content for URL: {normalized_url}")
+                        util_logger.debug(f"Successfully fetched content for URL: {normalized_url}")
                     except asyncio.TimeoutError:
                         util_logger.warning(f"Timeout while fetching URL: {normalized_url} (Attempt {err_count})")
                     except Exception as e:
@@ -94,19 +94,19 @@ class WebCrawler:
             if final_url:
                 normalized_final_url = self.normalize_url(final_url)
                 if await self.is_visited(normalized_final_url):
-                    util_logger.info(f"Final URL already visited after redirection: {normalized_final_url}")
+                    util_logger.debug(f"Final URL already visited after redirection: {normalized_final_url}")
                     return
                 
                 await self.mark_as_visited(normalized_final_url)
                 # If the final URL is in the root URL, skip
                 if normalized_final_url in self.root_normalized_url and depth > 0:
-                    util_logger.info(f"Final URL {normalized_final_url} is within root URL and depth > 0. Skipping.")
+                    util_logger.debug(f"Final URL {normalized_final_url} is within root URL and depth > 0. Skipping.")
                     return
 
             if not self.scraper.web_fetcher.is_pdf_url(final_url):
                 try:
                     subpage_links = await self.scraper.find_subpage_links(normalized_url, html)
-                    util_logger.info(f"Found {len(subpage_links)} subpage links in URL: {normalized_url}")
+                    util_logger.debug(f"Found {len(subpage_links)} subpage links in URL: {normalized_url}")
                 except Exception as e:
                     util_logger.error(f"Error finding subpage links in URL: {normalized_url}: {e}")
                     return
@@ -115,11 +115,11 @@ class WebCrawler:
             normalized_link = self.normalize_url(link, base_url=normalized_url)
 
             if depth >= d_limit:
-                util_logger.info(f"Depth limit reached for URL: {normalized_link}")
+                util_logger.debug(f"Depth limit reached for URL: {normalized_link}")
                 continue
 
             if await self.is_visited(normalized_link):
-                util_logger.info(f"URL already visited: {normalized_link}")
+                util_logger.debug(f"URL already visited: {normalized_link}")
                 continue
 
             await self.mark_as_visited(normalized_link)

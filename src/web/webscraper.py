@@ -43,19 +43,19 @@ class WebScraper:
             util_logger.debug("Cache hit for URL: %s, redirecting to: %s", url, redirect_url)
             content = self.cache_manager.get_cached_data('url_to_page_data', redirect_url)
             if content:
-                util_logger.info("Content retrieved from cache for URL: %s", redirect_url)
+                util_logger.debug("Content retrieved from cache for URL: %s", redirect_url)
                 return redirect_url, content
             else:
                 util_logger.warning("Redirect URL found in cache but no content cached for: %s", redirect_url)
         
         # Fetch content
-        util_logger.info("Cache miss for URL: %s. Fetching content.", url)
+        util_logger.debug("Cache miss for URL: %s. Fetching content.", url)
         try:
             final_url, content = await self.web_fetcher.fetch_content(url)
             if not content:
                 util_logger.error("Failed to fetch content for URL: %s", url)
                 return None, None
-            util_logger.info("Content fetched successfully for URL: %s", final_url)
+            util_logger.debug("Content fetched successfully for URL: %s", final_url)
         except Exception as e:
             util_logger.error("Exception occurred while fetching content for URL: %s. Error: %s", url, str(e))
             return None, None

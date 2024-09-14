@@ -45,10 +45,10 @@ class RestaurantMenuLocator:
         # Check if data exists in cache
         cached_data = self.db.get_data_by_hash(hash_key)
         if cached_data:
-            util_logger.info(f"Cache hit for hash_key='{hash_key}'. Returning cached data.")
+            util_logger.debug(f"Cache hit for hash_key='{hash_key}'. Returning cached data.")
             return json.loads(cached_data)
         else:
-            util_logger.info(f"Cache miss for hash_key='{hash_key}'. Proceeding with API request.")
+            util_logger.debug(f"Cache miss for hash_key='{hash_key}'. Proceeding with API request.")
 
         # If no cache, make API request
         coords = self.get_coordinates(address)
@@ -95,10 +95,10 @@ class RestaurantMenuLocator:
         # Check if data exists in cache
         cached_data = self.db.get_data_by_hash(place_id)
         if cached_data:
-            util_logger.info(f"Cache hit for place_id='{place_id}'. Returning cached menu data.")
+            util_logger.debug(f"Cache hit for place_id='{place_id}'. Returning cached menu data.")
             return json.loads(cached_data)
         else:
-            util_logger.info(f"Cache miss for place_id='{place_id}'. Proceeding with API request.")
+            util_logger.debug(f"Cache miss for place_id='{place_id}'. Proceeding with API request.")
 
         # If no cache, make API request for place details
         details_url = "https://maps.googleapis.com/maps/api/place/details/json"
