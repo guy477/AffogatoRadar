@@ -6,3 +6,4 @@ src/backend/__pycache__/*
 src/_utils/__pycache__/*
 src/_db_helper.py
 src/_testing.py
+src/logging/*
