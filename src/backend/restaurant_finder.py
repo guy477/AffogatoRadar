@@ -57,7 +57,6 @@ class RestaurantMenuLocator:
             # Save the data in the database
             self.db.save_data(hash_key, json.dumps(response_data))
         
-        print(response_data)
         return response_data
 
     def get_menu(self, place_id):

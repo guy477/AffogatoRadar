@@ -13,19 +13,23 @@ class WebFetcher:
     async def start_playwright(self):
         """Initialize Playwright and the browser instance."""
         if not self.playwright:
+            print('Info: Starting playwright and launching browser.')
             self.playwright = await async_playwright().start()
             
             # NOTE: We're using firefox because it's more universal. Install plugins to optimize
             self.browser = await self.playwright.firefox.launch(headless=False)
 
         if not self.browser.is_connected():
+            print('Warning: Browser reconnecting.')
             self.browser = await self.playwright.firefox.launch(headless=False)
 
     async def stop_playwright(self):
         """Stop the Playwright instance and close the browser."""
         if self.browser:
+            print('Closing the browser.')
             await self.browser.close()
         if self.playwright:
+            print('Stopping playwright.')
             await self.playwright.stop()
 
     def is_pdf_url(self, url):
@@ -65,9 +69,6 @@ class WebFetcher:
         try:
             # Additional wait to ensure content is fully loaded
             await page.wait_for_load_state('networkidle', timeout=self.webpage_timeout / 4)
-            
-            # Pause execution and open Playwright Inspector
-            # await page.pause()
             
             # After resuming, retrieve the page content
             html_content = await page.content()

@@ -9,7 +9,7 @@ class LLM:
     def __init__(self, model_chat="gpt-4o-mini", model_embedding='text-embedding-3-large', max_tokens=265, temperature=0.7):
         self.model_chat = model_chat
         self.model_embedding = model_embedding
-        self.token_limit = 8191  # token limit for text-embedding-ada-002
+        self.token_limit = 8191  # token limit for 'text-embedding-3-large'
         self.encoding = tiktoken.encoding_for_model(model_embedding)
         self.max_tokens = max_tokens
         self.temperature = temperature
