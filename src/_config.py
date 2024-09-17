@@ -37,7 +37,7 @@ ESTABLISHMENT_TYPE = "food,restaurant,bar"  # Types of establishments to search 
 
 # <-----------------------Targeting Attributes--------------------------------->
 TARGET_ATTRIBUTES = {  # Attributes of the dish of interest.
-    "name": ["borscht", "borsh", "ukrainian borscht"],  # Full, common names of the menu item.
+    "name": ["borscht", "borsh", "ukrainian borsh"],  # Full, common names of the menu item.
     "ingredient_1": ["pork", "chicken", "beef"],  # Primary ingredients.
     "ingredient_2": ["beet", "cabbage"],  # Secondary ingredients.
     "ingredient_3": ["potato", "carrot", "onion"],  # Tertiary ingredients.
