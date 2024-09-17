@@ -6,7 +6,7 @@ from backend import itemmatcher, placeslocator
 from web import webscraper, webcrawler
 import pandas as pd
 
-async def load_old_trees(filepath='../data/_trees/trees.json'):
+async def load_old_trees(filepath='../_trees/trees.json'):
     """Load existing trees from a JSON file."""
     try:
         with open(filepath, 'r') as f:
@@ -24,7 +24,7 @@ async def load_old_trees(filepath='../data/_trees/trees.json'):
         UTIL_LOGGER.error(f"Unexpected error while loading trees: {e}. Starting with empty trees.")
         return {}
 
-async def save_trees(trees, filepath='../data/_trees/trees.json'):
+async def save_trees(trees, filepath='../_trees/trees.json'):
     """Save trees to a JSON file."""
     try:
         with open(filepath, 'w') as f:
@@ -130,7 +130,7 @@ async def save_aggregated_results(aggregated_results: list) -> None:
         try:
             df.to_csv('../results.csv', index=False)
             UTIL_LOGGER.info(
-                f"Aggregated results saved to ../data/results.csv with {len(df)} records."
+                f"Aggregated results saved to ../results.csv with {len(df)} records."
             )
         except Exception as e:
             UTIL_LOGGER.error(f"Failed to save aggregated results to CSV: {e}")

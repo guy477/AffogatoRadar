@@ -1,0 +1,623 @@
+{
+    "ChIJV8_EQ2zMQIYRsvBwwARK3t0": {
+        "url": "https://houstongadget.com/",
+        "descriptor": "https://houstongadget.com/",
+        "scraped_items": {
+            "rockford fosgate t1650-s power series component speaker system": [],
+            "rockford fosgate t1650 power series 2-way car speakers": [],
+            "db drive apt8rgb-xb tower speaker": [],
+            "planet audio p70cpa car stereo apple car play android audo": [],
+            "kenwood dmx47s double-din in-dash multimedia receiver with bluetooth apple carplay android auto and siriusxm ready": [],
+            "hx-03 bluetooth touch control earbud hifi sound quality clear durable tws wireless bluetooth earphone white": [],
+            "ds18 6.5 mid range pcs bundle": [],
+            "ds18 gen-x 6x9 4-way coaxial speakers watts": [],
+            "jbl stadium 62cf 6.5 component speaker system": [],
+            "jbl stadium 6x9 stadium way speaker set": [],
+            "jl audio c2 650 2-way components speaker": [],
+            "jl audio rd500.1 mono amplifier": [],
+            "jl audio rd 400.4 4 channel amplifier": [],
+            "pioneer double din bluetooth car stereo touch screen dmh-240ex": [],
+            "jl audio c2 5x7 speaker pair": [],
+            "jl audio c2 6.5 coaxial speakers pair": [],
+            "pioneer avh-2500nex car stereo apple carplay android auto cd dvd bluetooth": [],
+            "jl audio c2 6x9 pair": [],
+            "db p7tw m": [],
+            "db drive p3 m6k": [],
+            "db drive p5tw d": [],
+            "db drive pro6k4mt": [],
+            "db drive wdx k g2 mono amplifier": [],
+            "db drive apt65rgb tower pair": []
+        },
+        "menu_book": {
+            "rockford fosgate t1650 power series 2-way car speakers": [
+                "aluminum dome tweeter",
+                "sensitivity db",
+                "power range watts rms",
+                "frequency response hz",
+                "grilles included",
+                "increases cone area",
+                "integrated concealed crossover",
+                "2-way speakers",
+                "polypropylene woofer",
+                "top-mount depth",
+                "santoprene rubber surround",
+                "injection molded carbon fiber"
+            ],
+            "planet audio p70cpa car stereo": [
+                "bluetooth",
+                "double-din",
+                "mp3",
+                "rds tuner",
+                "am",
+                "wav",
+                "steering wheel control input",
+                "compatible with smart phones",
+                "built-in eq",
+                "rear camera",
+                "mech-less multimedia player",
+                "high res audio",
+                "no cd player",
+                "max power",
+                "plays bluetooth",
+                "bluetooth hands free",
+                "pre amp outputs",
+                "fm",
+                "rbds tuner",
+                "ape",
+                "apple carplay",
+                "wma",
+                "touchscreen",
+                "sd",
+                "android auto",
+                "ogg",
+                "digital media",
+                "multi color illumination options",
+                "flac",
+                "usb",
+                "aux",
+                "bluetooth audio streaming"
+            ],
+            "jl audio c2 650 2-way components speaker": [
+                "component speaker system includes woofers tweeters and crossovers injection molded mica filled polypropylene woofer with butyl rubber surround silk dome tweeter external crossover network with tweeter levels ohm impedance handles up to watts rms frequency response sensitivity woofer grilles included depth"
+            ],
+            "pioneer double din bluetooth car stereo touch screen": [],
+            "pioneer avh car stereo": [
+                "android auto compatible",
+                "apple carplay compatible",
+                "customizable touchscreen interface",
+                "built-in amp",
+                "bluetooth hands-free calling",
+                "mixtrax for a dj-inspired audio visual experience",
+                "smartphone features",
+                "motorized vga touchscreen",
+                "compatible with most factory steering wheel audio controls",
+                "dvdcd receiver",
+                "plays audio video content from cds dvds and usb memory devices"
+            ],
+            "raptor gauge amplifier kit complete wiring install car stereo": [
+                "one anl fuse holder with amp fuse",
+                "awg amp kit with rca",
+                "cca copper clad aluminum",
+                "five nickel plated gauge spade terminals and hardwares",
+                "one ft awg cca power cable",
+                "four nickel plated awg seamed ring terminals",
+                "one ft awg turn-on wire",
+                "for up to w systems",
+                "includes one ft twist rca cable",
+                "one ft awg cca ground cable",
+                "one ft side-by-side speaker wire",
+                "complete amp kit"
+            ],
+            "kenwood dmx47s": [
+                "bluetooth",
+                "siriusxm ready",
+                "apple carplay",
+                "android auto"
+            ],
+            "planet audio p70cpa": [
+                "apple car play",
+                "android audo"
+            ],
+            "raptor gauge amplifier kit": [
+                "complete wiring install"
+            ],
+            "ds18 mid range": [],
+            "ds18 gen-x 6x9": [
+                "4-way coaxial speakers",
+                "watts"
+            ],
+            "jbl stadium 62cf": [
+                "component speaker system"
+            ],
+            "jl audio c2 650": [
+                "2-way components speaker"
+            ],
+            "jl audio rd500.1": [
+                "mono amplifier"
+            ],
+            "jl audio rd 400.4": [
+                "4 channel amplifier"
+            ],
+            "pioneer double din bluetooth car stereo": [
+                "touch screen"
+            ],
+            "jbl stadium 6x9": [
+                "3 way speaker set"
+            ],
+            "jl audio c2 5x7": [
+                "speaker pair"
+            ],
+            "jl audio c2 6.5": [
+                "coaxial speakers pair"
+            ],
+            "pioneer avh-2500nex": [
+                "car stereo",
+                "bluetooth",
+                "apple carplay",
+                "cd",
+                "android auto",
+                "dvd"
+            ],
+            "jl audio c2 6x9": [
+                "pair"
+            ],
+            "rockford fosgate t1650-s": [
+                "power series component speaker system"
+            ],
+            "rockford fosgate t1650": [
+                "power series 2-way car speakers"
+            ],
+            "db drive apt8rgb-xb tower speaker": [],
+            "db drive p3": [],
+            "rockford fosgate t1650-s power series component speaker system": [],
+            "planet audio p70cpa car stereo apple car play android audo": [],
+            "kenwood dmx47s double-din in-dash multimedia receiver with bluetooth apple carplay android auto and siriusxm ready": [],
+            "hx-03 bluetooth touch control earbud hifi sound quality clear durable tws wireless bluetooth earphone white": [],
+            "ds18 6.5 mid range pcs bundle": [],
+            "ds18 gen-x 6x9 4-way coaxial speakers watts": [],
+            "jbl stadium 62cf 6.5 component speaker system": [],
+            "jbl stadium 6x9 stadium way speaker set": [],
+            "jl audio rd500.1 mono amplifier": [],
+            "jl audio rd 400.4 4 channel amplifier": [],
+            "pioneer double din bluetooth car stereo touch screen dmh-240ex": [],
+            "jl audio c2 5x7 speaker pair": [],
+            "jl audio c2 6.5 coaxial speakers pair": [],
+            "pioneer avh-2500nex car stereo apple carplay android auto cd dvd bluetooth": [],
+            "jl audio c2 6x9 pair": [],
+            "db p7tw m": [],
+            "db drive p3 m6k": [],
+            "db drive p5tw d": [],
+            "db drive pro6k4mt": [],
+            "db drive wdx k g2 mono amplifier": [],
+            "db drive apt65rgb tower pair": []
+        },
+        "children": [
+            {
+                "url": "https://houstongadget.com/Car-Electronics-c63663496",
+                "descriptor": "https://houstongadget.com/Car-Electronics-c63663496",
+                "scraped_items": {
+                    "kenwood dmx47s": [
+                        "bluetooth",
+                        "apple carplay",
+                        "android auto",
+                        "siriusxm ready"
+                    ],
+                    "planet audio p70cpa": [
+                        "apple car play",
+                        "android audo"
+                    ],
+                    "raptor gauge amplifier kit": [
+                        "complete wiring install"
+                    ],
+                    "ds18 mid range": [],
+                    "ds18 gen-x 6x9": [
+                        "4-way coaxial speakers",
+                        "watts"
+                    ],
+                    "jbl stadium 62cf": [
+                        "component speaker system"
+                    ],
+                    "jl audio c2 650": [
+                        "2-way components speaker"
+                    ],
+                    "jl audio rd500.1": [
+                        "mono amplifier"
+                    ],
+                    "jl audio rd 400.4": [
+                        "4 channel amplifier"
+                    ],
+                    "pioneer double din bluetooth car stereo": [
+                        "touch screen"
+                    ],
+                    "jbl stadium 6x9": [
+                        "3 way speaker set"
+                    ],
+                    "jl audio c2 5x7": [
+                        "speaker pair"
+                    ],
+                    "jl audio c2 6.5": [
+                        "coaxial speakers pair"
+                    ],
+                    "pioneer avh-2500nex": [
+                        "car stereo",
+                        "apple carplay",
+                        "android auto",
+                        "cd",
+                        "dvd",
+                        "bluetooth"
+                    ],
+                    "jl audio c2 6x9": [
+                        "pair"
+                    ],
+                    "rockford fosgate t1650-s": [
+                        "power series component speaker system"
+                    ],
+                    "rockford fosgate t1650": [
+                        "power series 2-way car speakers"
+                    ],
+                    "db drive apt8rgb-xb tower speaker": [],
+                    "db drive p3": []
+                },
+                "menu_book": {
+                    "raptor gauge amplifier kit complete wiring install car stereo": [
+                        "one anl fuse holder with amp fuse",
+                        "awg amp kit with rca",
+                        "cca copper clad aluminum",
+                        "five nickel plated gauge spade terminals and hardwares",
+                        "one ft awg cca power cable",
+                        "four nickel plated awg seamed ring terminals",
+                        "one ft awg turn-on wire",
+                        "for up to w systems",
+                        "includes one ft twist rca cable",
+                        "one ft awg cca ground cable",
+                        "one ft side-by-side speaker wire",
+                        "complete amp kit"
+                    ],
+                    "kenwood dmx47s": [
+                        "apple carplay",
+                        "bluetooth",
+                        "android auto",
+                        "siriusxm ready"
+                    ],
+                    "planet audio p70cpa": [
+                        "apple car play",
+                        "android audo"
+                    ],
+                    "raptor gauge amplifier kit": [
+                        "complete wiring install"
+                    ],
+                    "ds18 mid range": [],
+                    "ds18 gen-x 6x9": [
+                        "4-way coaxial speakers",
+                        "watts"
+                    ],
+                    "jbl stadium 62cf": [
+                        "component speaker system"
+                    ],
+                    "jl audio c2 650": [
+                        "2-way components speaker"
+                    ],
+                    "jl audio rd500.1": [
+                        "mono amplifier"
+                    ],
+                    "jl audio rd 400.4": [
+                        "4 channel amplifier"
+                    ],
+                    "pioneer double din bluetooth car stereo": [
+                        "touch screen"
+                    ],
+                    "jbl stadium 6x9": [
+                        "3 way speaker set"
+                    ],
+                    "jl audio c2 5x7": [
+                        "speaker pair"
+                    ],
+                    "jl audio c2 6.5": [
+                        "coaxial speakers pair"
+                    ],
+                    "pioneer avh-2500nex": [
+                        "car stereo",
+                        "bluetooth",
+                        "apple carplay",
+                        "cd",
+                        "android auto",
+                        "dvd"
+                    ],
+                    "jl audio c2 6x9": [
+                        "pair"
+                    ],
+                    "rockford fosgate t1650-s": [
+                        "power series component speaker system"
+                    ],
+                    "rockford fosgate t1650": [
+                        "power series 2-way car speakers"
+                    ],
+                    "db drive apt8rgb-xb tower speaker": [],
+                    "db drive p3": []
+                },
+                "children": [
+                    {
+                        "url": "https://houstongadget.com/Raptor-4-Gauge-Amplifier-Kit-Complete-Wiring-Install-Car-Stereo-4-AWG-4G-p364789526",
+                        "descriptor": "https://houstongadget.com/Raptor-4-Gauge-Amplifier-Kit-Complete-Wiring-Install-Car-Stereo-4-AWG-4G-p364789526",
+                        "scraped_items": {
+                            "raptor gauge amplifier kit complete wiring install car stereo": [
+                                "complete amp kit",
+                                "awg amp kit with rca",
+                                "for up to w systems",
+                                "cca copper clad aluminum",
+                                "includes one ft twist rca cable",
+                                "one ft awg cca power cable",
+                                "one ft awg cca ground cable",
+                                "one ft awg turn-on wire",
+                                "one ft side-by-side speaker wire",
+                                "one anl fuse holder with amp fuse",
+                                "four nickel plated awg seamed ring terminals",
+                                "five nickel plated gauge spade terminals and hardwares"
+                            ]
+                        },
+                        "menu_book": {
+                            "raptor gauge amplifier kit complete wiring install car stereo": [
+                                "one anl fuse holder with amp fuse",
+                                "one ft awg turn-on wire",
+                                "awg amp kit with rca",
+                                "cca copper clad aluminum",
+                                "for up to w systems",
+                                "five nickel plated gauge spade terminals and hardwares",
+                                "one ft awg cca power cable",
+                                "four nickel plated awg seamed ring terminals",
+                                "includes one ft twist rca cable",
+                                "one ft awg cca ground cable",
+                                "one ft side-by-side speaker wire",
+                                "complete amp kit"
+                            ]
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "url": "https://houstongadget.com/Computers-c63799761",
+                "descriptor": "https://houstongadget.com/Computers-c63799761",
+                "scraped_items": {},
+                "menu_book": {},
+                "children": []
+            },
+            {
+                "url": "https://houstongadget.com/Kids-Toys-c65827492",
+                "descriptor": "https://houstongadget.com/Kids-Toys-c65827492",
+                "scraped_items": {},
+                "menu_book": {},
+                "children": []
+            },
+            {
+                "url": "https://houstongadget.com/Rockford-Fosgate-T1650-Power-Series-6-1-2-2-way-car-speakers-p438005816",
+                "descriptor": "https://houstongadget.com/Rockford-Fosgate-T1650-Power-Series-6-1-2-2-way-car-speakers-p438005816",
+                "scraped_items": {
+                    "rockford fosgate t1650 power series 2-way car speakers": [
+                        "2-way speakers",
+                        "injection molded carbon fiber",
+                        "polypropylene woofer",
+                        "santoprene rubber surround",
+                        "aluminum dome tweeter",
+                        "integrated concealed crossover",
+                        "grilles included",
+                        "increases cone area",
+                        "power range watts rms",
+                        "frequency response hz",
+                        "sensitivity db",
+                        "top-mount depth"
+                    ]
+                },
+                "menu_book": {
+                    "rockford fosgate t1650 power series 2-way car speakers": [
+                        "increases cone area",
+                        "2-way speakers",
+                        "aluminum dome tweeter",
+                        "polypropylene woofer",
+                        "top-mount depth",
+                        "santoprene rubber surround",
+                        "frequency response hz",
+                        "injection molded carbon fiber",
+                        "sensitivity db",
+                        "power range watts rms",
+                        "grilles included",
+                        "integrated concealed crossover"
+                    ]
+                },
+                "children": []
+            },
+            {
+                "url": "https://houstongadget.com/Planet-Audio-P70CPA-Car-Stereo-Apple-Car-Play-Android-Audo-p364789768",
+                "descriptor": "https://houstongadget.com/Planet-Audio-P70CPA-Car-Stereo-Apple-Car-Play-Android-Audo-p364789768",
+                "scraped_items": {
+                    "planet audio p70cpa car stereo": [
+                        "double-din",
+                        "apple carplay",
+                        "android auto",
+                        "mech-less multimedia player",
+                        "touchscreen",
+                        "bluetooth",
+                        "max power",
+                        "rds tuner",
+                        "rbds tuner",
+                        "built-in eq",
+                        "no cd player",
+                        "plays bluetooth",
+                        "usb",
+                        "sd",
+                        "mp3",
+                        "wma",
+                        "wav",
+                        "flac",
+                        "ogg",
+                        "ape",
+                        "high res audio",
+                        "fm",
+                        "am",
+                        "digital media",
+                        "compatible with smart phones",
+                        "usb",
+                        "sd",
+                        "aux",
+                        "rear camera",
+                        "steering wheel control input",
+                        "pre amp outputs",
+                        "multi color illumination options",
+                        "bluetooth hands free",
+                        "bluetooth audio streaming"
+                    ]
+                },
+                "menu_book": {
+                    "planet audio p70cpa car stereo": [
+                        "bluetooth",
+                        "double-din",
+                        "mp3",
+                        "rds tuner",
+                        "am",
+                        "wav",
+                        "steering wheel control input",
+                        "compatible with smart phones",
+                        "built-in eq",
+                        "rear camera",
+                        "mech-less multimedia player",
+                        "high res audio",
+                        "no cd player",
+                        "max power",
+                        "plays bluetooth",
+                        "bluetooth hands free",
+                        "pre amp outputs",
+                        "fm",
+                        "rbds tuner",
+                        "ape",
+                        "apple carplay",
+                        "wma",
+                        "touchscreen",
+                        "sd",
+                        "android auto",
+                        "ogg",
+                        "digital media",
+                        "multi color illumination options",
+                        "flac",
+                        "usb",
+                        "aux",
+                        "bluetooth audio streaming"
+                    ]
+                },
+                "children": []
+            },
+            {
+                "url": "https://houstongadget.com/JL-Audio-C2-650-6-5-2-Way-Components-Speaker-p382575618",
+                "descriptor": "https://houstongadget.com/JL-Audio-C2-650-6-5-2-Way-Components-Speaker-p382575618",
+                "scraped_items": {
+                    "jl audio c2 650 2-way components speaker": [
+                        "component speaker system includes woofers tweeters and crossovers injection molded mica filled polypropylene woofer with butyl rubber surround silk dome tweeter external crossover network with tweeter levels ohm impedance handles up to watts rms frequency response sensitivity woofer grilles included depth"
+                    ]
+                },
+                "menu_book": {
+                    "jl audio c2 650 2-way components speaker": [
+                        "component speaker system includes woofers tweeters and crossovers injection molded mica filled polypropylene woofer with butyl rubber surround silk dome tweeter external crossover network with tweeter levels ohm impedance handles up to watts rms frequency response sensitivity woofer grilles included depth"
+                    ]
+                },
+                "children": []
+            },
+            {
+                "url": "https://houstongadget.com/Pioneer-Double-Din-Bluetooth-Car-Stereo-Touch-Screen-DMH-240EX-p386845756",
+                "descriptor": "https://houstongadget.com/Pioneer-Double-Din-Bluetooth-Car-Stereo-Touch-Screen-DMH-240EX-p386845756",
+                "scraped_items": {
+                    "pioneer double din bluetooth car stereo touch screen": []
+                },
+                "menu_book": {
+                    "pioneer double din bluetooth car stereo touch screen": []
+                },
+                "children": []
+            },
+            {
+                "url": "https://houstongadget.com/Pioneer-AVH-2500NEX-6-8-Car-Stereo-Apple-Carplay-Android-auto-CD-DVD-Bluetooth-p390204120",
+                "descriptor": "https://houstongadget.com/Pioneer-AVH-2500NEX-6-8-Car-Stereo-Apple-Carplay-Android-auto-CD-DVD-Bluetooth-p390204120",
+                "scraped_items": {
+                    "pioneer avh car stereo": [
+                        "dvdcd receiver",
+                        "motorized vga touchscreen",
+                        "bluetooth hands-free calling",
+                        "customizable touchscreen interface",
+                        "smartphone features",
+                        "apple carplay compatible",
+                        "android auto compatible",
+                        "plays audio video content from cds dvds and usb memory devices",
+                        "built-in amp",
+                        "compatible with most factory steering wheel audio controls",
+                        "mixtrax for a dj-inspired audio visual experience"
+                    ]
+                },
+                "menu_book": {
+                    "pioneer avh car stereo": [
+                        "motorized vga touchscreen",
+                        "android auto compatible",
+                        "apple carplay compatible",
+                        "compatible with most factory steering wheel audio controls",
+                        "customizable touchscreen interface",
+                        "built-in amp",
+                        "dvdcd receiver",
+                        "bluetooth hands-free calling",
+                        "mixtrax for a dj-inspired audio visual experience",
+                        "plays audio video content from cds dvds and usb memory devices",
+                        "smartphone features"
+                    ]
+                },
+                "children": []
+            },
+            {
+                "url": "https://houstongadget.com/cart",
+                "descriptor": "https://houstongadget.com/cart",
+                "scraped_items": {},
+                "menu_book": {},
+                "children": []
+            }
+        ]
+    },
+    "ChIJ3yecYgTBQIYRTAJMu77L26I": {
+        "url": "https://er4gadgets.com/",
+        "descriptor": "https://er4gadgets.com/",
+        "scraped_items": {
+            "er4gadgets": [
+                "electronics repair houston",
+                "phones",
+                "laptops",
+                "drones"
+            ],
+            "apple repair services": [],
+            "iphone repair": [],
+            "ipad repair": [],
+            "macbook repair": [],
+            "smartphone repair": [],
+            "lg smartphone repair": [],
+            "samsung repair": [],
+            "motorola repair": [],
+            "laptop repair": [],
+            "tablet repair": [],
+            "drone repair": [],
+            "playstation repair": []
+        },
+        "menu_book": {
+            "er4gadgets": [
+                "electronics repair houston",
+                "laptops",
+                "phones",
+                "drones"
+            ],
+            "apple repair services": [],
+            "iphone repair": [],
+            "ipad repair": [],
+            "macbook repair": [],
+            "smartphone repair": [],
+            "lg smartphone repair": [],
+            "samsung repair": [],
+            "motorola repair": [],
+            "laptop repair": [],
+            "tablet repair": [],
+            "drone repair": [],
+            "playstation repair": []
+        },
+        "children": []
+    }
+}

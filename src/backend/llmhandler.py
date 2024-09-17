@@ -19,13 +19,14 @@ class LLMHandler:
 
     async def extract_scraped_items(self, content, content_type='html'):
         UTIL_LOGGER.info(f"Starting extract_scraped_items with content_type: {content_type}.")
+        UTIL_LOGGER.debug(f"Content: {content}")
         try:
             if content_type == 'pdf':
                 prompt = PROMPT_PDF_EXTRACT.format(content)  # Meta data instead of actual content
-                UTIL_LOGGER.debug("Using PDF extraction prompt.")
+                UTIL_LOGGER.debug(f"Using PDF extraction prompt. {prompt}")
             else:
                 prompt = PROMPT_HTML_EXTRACT.format(content)  # Meta data instead of actual content
-                UTIL_LOGGER.debug("Using HTML extraction prompt.")
+                UTIL_LOGGER.debug(f"Using HTML extraction prompt. {prompt}")
             
             messages = [{"role": "user", "content": prompt}]  # Meta data
             UTIL_LOGGER.info(f"Prepared messages for LLM chat. {messages}")

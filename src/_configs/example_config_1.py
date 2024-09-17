@@ -1,5 +1,4 @@
-""" SEE `_configs/` FOR EXAMPLES.
-
+"""
 ####################################################################################################
 ########################### Configuration for Search Functionality #################################
 ####################################################################################################
@@ -33,66 +32,66 @@ SIMILARITY_THRESHOLD = 0.550  # Ignore any links with embedding cosine similarit
 WEBPAGE_TIMEOUT = 10000  # Time in milliseconds to wait for a webpage to load before throwing a timeout error.
 
 # <-----------------------Search Parameters--------------------------------->
-SEARCH_REQUEST = "ukrainian food"  # Search query term.
-ESTABLISHMENT_TYPE = "food,restaurant,bar"  # Types of establishments to search for.
+SEARCH_REQUEST = "electronics gadgets"  # Search query term.
+ESTABLISHMENT_TYPE = "electronics,store,shop"  # Types of establishments to search for.
 
 # <-----------------------Targeting Attributes--------------------------------->
-TARGET_ATTRIBUTES = {  # Attributes of the dish of interest.
-    "name": ["borscht", "borsh", "ukrainian borsh"],  # Full, common names of the menu item.
-    "ingredient_1": ["pork", "chicken", "beef"],  # Primary ingredients.
-    "ingredient_2": ["beet", "cabbage"],  # Secondary ingredients.
-    "ingredient_3": ["potato", "carrot", "onion"],  # Tertiary ingredients.
-    # "ingredient_4": [],  # Example of an empty ingredient list. Add as many ingredients as you deem necessary.
+TARGET_ATTRIBUTES = {  # Attributes of the product of interest.
+    "name": ["smartphone", "laptop", "tablet"],  # Full, common names of the product.
+    "feature_1": ["battery life", "screen size", "processor"],  # Primary features.
+    "feature_2": ["ram", "storage", "camera"],  # Secondary features.
+    "feature_3": ["color", "weight", "brand"],  # Tertiary features.
+    # "feature_4": [],  # Example of an empty feature list. Add as many features as you deem necessary.
 }
 
 # <-----------------------Alternative Target Attributes Examples-------------------->
 # What are we looking for?
 # TARGET_ATTRIBUTES = {
-#     "name": ["chicken parmesan"],  # Full, common names of the menu item.
-#     "ingredient_1": ["chicken"],  # Primary ingredient.
-#     "ingredient_2": ["parmesan", "mozzarella"],  # Secondary ingredients.
-#     "ingredient_3": ["marinara", "tomato", "red"],  # Tertiary ingredients.
+#     "name": ["gaming console"],  # Full, common names of the product.
+#     "feature_1": ["graphics", "storage"],  # Primary features.
+#     "feature_2": ["resolution", "connectivity"],  # Secondary features.
+#     "feature_3": ["color", "weight"],  # Tertiary features.
 # }
 
 # TARGET_ATTRIBUTES = {
-#     "name": ["fish and chips"],  # Full, common names of the menu item.
-#     "ingredient_1": ["fish"],  # Primary ingredient.
-#     "ingredient_2": ["potatoes"],  # Secondary ingredient.
-#     "ingredient_3": [],  # No tertiary ingredients.
+#     "name": ["wireless headphones"],  # Full, common names of the product.
+#     "feature_1": ["battery life"],  # Primary feature.
+#     "feature_2": ["noise cancellation"],  # Secondary feature.
+#     "feature_3": [],  # No tertiary features.
 # }
 
 # <-----------------------URL Keywords--------------------------------->
 TARGET_URL_KEYWORDS = [
-    'menu', 'food', 'drink', 'bar', 'lunch', 'dinner', 'brunch', 'dessert', 'breakfast',
-    'nutrition', 'ingredients', 'order', 'takeout', 'delivery', 'specials', 'catering',
-    'beverages', 'wine', 'cocktails', 'dish', 'restaurant', 'happy-hour', 'reservation',
-    'meals', 'sides', 'entrees', 'appetizers', 'cuisine', 'dining', 'snack', 'side',
-    'starter', 'buffet'
+    'product', 'electronics', 'gadgets', 'buy', 'shop', 'store', 'price', 'features',
+    'specs', 'reviews', 'discount', 'sale', 'new arrivals', 'best sellers', 'offers',
+    'deals', 'cart', 'checkout', 'warranty', 'support', 'accessories', 'brands',
+    'technology', 'innovation', 'latest', 'trending', 'top rated', 'customer service',
+    'shipping', 'returns', 'exchange', 'inventory', 'stock', 'availability'
 ]
 
 # <-----------------------Prompt Settings--------------------------------->
-PROMPT_HTML_EXTRACT = """You're tasked with extracting structured menu items from a restaurant's unstructured webpage text. Please follow these steps carefully:
+PROMPT_HTML_EXTRACT = """You're tasked with extracting structured product items from an online store's unstructured webpage text. Please follow these steps carefully:
 
-1. **Menu Item Formatting**: Each line represents one menu item. The format is:
-    - Item name, followed by a colon (:).
-    - Ingredients, separated by vertical bars (|). 
-    - If no ingredients are listed, use 'N/A'.
+1. **Product Item Formatting**: Each line represents one product item. The format is:
+    - Product name, followed by a colon (:).
+    - Features, separated by vertical bars (|). 
+    - If no features are listed, use 'N/A'.
   
 2. **Text Cleaning**:
     - Omit any numbers, special characters, or punctuation.
-    - Ignore prices, calories, or descriptions.
+    - Ignore prices, ratings, or descriptions.
   
 3. **Return Structure**:
-    - If no items are found, return: `No menu items found`.
+    - If no items are found, return: `No product items found`.
     - If only one item is found, format it as described.
 
 4. **Examples**:
     ```output
-    Item Name:Ingredient|Ingredient
-    Item with No Ingredients:N/A
+    Product Name:Feature|Feature
+    Product with No Features:N/A
     ```
-
-Please ensure that items are copied exactly as seen in the text, with special characters removed. Double-check your work for accuracy.
+  
+Please ensure that products are copied exactly as seen in the text, with special characters removed. Double-check your work for accuracy.
 ```
 {}
 ```"""

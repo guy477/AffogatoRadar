@@ -1,4 +1,6 @@
-data/*
+_trees/*
+!_trees/example_trees_0.json
+!_trees/example_trees_1.json
 __pycache__/*
 src/__pycache__/*
 src/web/__pycache__/*
