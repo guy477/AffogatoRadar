@@ -1,4 +1,4 @@
-from ._config import *
+from _config import *
 
 import os
 import re

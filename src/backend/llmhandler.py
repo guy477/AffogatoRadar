@@ -94,17 +94,22 @@ class LLMHandler:
 
             # Extract all unique segments from URLs
             unique_segments = self._extract_unique_segments(urls)
+            unique_segments.update(TARGET_URL_KEYWORDS)
             UTIL_LOGGER.debug(f"Total unique segments to fetch embeddings for: {len(unique_segments)}")
 
             # Retrieve embeddings with caching
-            segment_embeddings = await self._get_cached_embeddings(list(unique_segments))
+            segment_embeddings = await self._get_or_fetch_embeddings(list(unique_segments))
             if not segment_embeddings:
                 UTIL_LOGGER.error("Failed to retrieve embeddings for URL segments.")
                 return []
 
+            # Extract keyword embeddings
+            keyword_embeddings = [segment_embeddings[kw] for kw in TARGET_URL_KEYWORDS if kw in segment_embeddings]
+            keyword_embeddings = np.array(keyword_embeddings)
+
             relevant_urls = []
 
-            for url in tqdm(urls, desc="Processing URLs..."):
+            for url in urls:
                 UTIL_LOGGER.debug(f"Processing URL: {url}")
                 segments = self._extract_segments(url)
                 UTIL_LOGGER.debug(f"Extracted segments: {segments}")
@@ -125,7 +130,7 @@ class LLMHandler:
                     continue
 
                 # Calculate cosine similarities with keyword embeddings
-                similarities = cosine_similarity(current_embeddings, self.keyword_embeddings)
+                similarities = cosine_similarity(current_embeddings, keyword_embeddings)
                 max_similarity = similarities.max() if similarities.size > 0 else 0.0
 
                 UTIL_LOGGER.debug(f"Max similarity for URL '{url}': {max_similarity}")
@@ -175,9 +180,10 @@ class LLMHandler:
 
         return segments
 
-    async def _get_cached_embeddings(self, phrases: List[str]) -> dict:
+    async def _get_or_fetch_embeddings(self, phrases: List[str]) -> dict:
         """
         Retrieves embeddings for a list of phrases using caching.
+        If a phrase is not found in the cache, fetches it from the LLM and caches it.
         Returns a dictionary mapping phrases to their embeddings.
         """
         UTIL_LOGGER.debug(f"Fetching embeddings for {len(phrases)} unique phrases with caching.")
@@ -220,27 +226,3 @@ class LLMHandler:
                 raise e
 
         return embeddings
-
-    async def get_embeddings(self, phrases: List[str]) -> dict:
-        """
-        Retrieves embeddings for a list of phrases using the LLM.
-        Returns a dictionary mapping phrases to their embeddings.
-        """
-        UTIL_LOGGER.debug(f"Fetching embeddings for {len(phrases)} phrases.")
-        try:
-            new_embeddings = await self.llm.get_embeddings(phrases)
-            return {phrase: embedding for phrase, embedding in zip(phrases, new_embeddings)}
-        except Exception as e:
-            UTIL_LOGGER.error(f"Error fetching embeddings: {e}")
-            raise
-
-    @property
-    def keyword_embeddings(self):
-        """
-        Retrieves embeddings for target keywords used in similarity calculations.
-        Assumes TARGET_URL_KEYWORDS is defined elsewhere in the class.
-        """
-        if not hasattr(self, '_keyword_embeddings'):
-            embeddings = asyncio.run(self.get_embeddings(TARGET_URL_KEYWORDS))
-            self._keyword_embeddings = embeddings if embeddings else {}
-        return self._keyword_embeddings

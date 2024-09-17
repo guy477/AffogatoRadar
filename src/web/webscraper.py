@@ -42,10 +42,6 @@ class WebScraper:
         UTIL_LOGGER.info("Fetching and caching contents for URL: %s", url)
 
         normalized_url = NORMALIZE_URL(url)
-        # Check robots.txt compliance
-        if not await self.is_compliant(normalized_url):
-            UTIL_LOGGER.info(f"URL disallowed by robots.txt: {normalized_url}. Skipping.")
-            return None, None, None
 
         # Check cache first
         normalized_final_url = self.cache_manager.get_cached_data('source_dest', normalized_url)
@@ -58,6 +54,11 @@ class WebScraper:
                 return normalized_final_url, html_content, pdf_content
             else:
                 UTIL_LOGGER.warning("Redirect URL found in cache but no content cached for: %s", normalized_final_url)
+
+        # Check robots.txt compliance
+        if not await self.is_compliant(normalized_url):
+            UTIL_LOGGER.info(f"URL disallowed by robots.txt: {normalized_url}. Skipping.")
+            return None, None, None
 
         # Fetch content
         UTIL_LOGGER.debug("Cache miss for URL: %s. Fetching content.", normalized_url)

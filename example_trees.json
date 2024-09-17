@@ -1,0 +1,458 @@
+{
+    "ChIJjUSK5gO_QIYRSM-nMKVkwbw": {
+        "url": "https://www.foreigngrilltx.com/",
+        "descriptor": "https://www.foreigngrilltx.com/",
+        "scraped_items": {},
+        "menu_book": {
+            "uzbek plov": [
+                "carrots",
+                "spices",
+                "onions",
+                "garlic",
+                "lamb"
+            ],
+            "lamb khinkali": [
+                "broth",
+                "lamb"
+            ],
+            "beef khinkali": [
+                "broth",
+                "beef"
+            ],
+            "chicken khinkali": [
+                "broth",
+                "chicken"
+            ],
+            "potato/mushroom khinkali": [
+                "broth",
+                "potatoes",
+                "mushrooms"
+            ],
+            "khachapuri": [
+                "cheeses",
+                "egg"
+            ],
+            "beef samsa": [
+                "beef",
+                "onions"
+            ],
+            "chicken/potato samsa": [
+                "onions",
+                "potatoes",
+                "chicken"
+            ],
+            "ukraninan borsh": [
+                "meat",
+                "broth",
+                "vegetables",
+                "sour cream",
+                "pampushky",
+                "beets"
+            ],
+            "mastava": [
+                "meat",
+                "rice",
+                "yogurt",
+                "herbs",
+                "vegetables"
+            ],
+            "spicy korean carrot salad": [
+                "carrots",
+                "korean spices"
+            ],
+            "house salad": [
+                "cucumbers",
+                "tomatoes",
+                "onions"
+            ],
+            "eastern european sour cabbage": [
+                "cabbage"
+            ],
+            "red spicy sauce": [],
+            "white garlic sauce": [],
+            "kompot": [
+                "berries"
+            ],
+            "water": [],
+            "kvass": [],
+            "mineral water barjomi": []
+        },
+        "children": [
+            {
+                "url": "https://www.foreigngrilltx.com/menu",
+                "descriptor": "https://www.foreigngrilltx.com/menu",
+                "scraped_items": {
+                    "uzbek plov": [
+                        "lamb",
+                        "carrots",
+                        "onions",
+                        "garlic",
+                        "spices"
+                    ],
+                    "lamb khinkali": [
+                        "lamb",
+                        "broth"
+                    ],
+                    "beef khinkali": [
+                        "beef",
+                        "broth"
+                    ],
+                    "chicken khinkali": [
+                        "chicken",
+                        "broth"
+                    ],
+                    "potato/mushroom khinkali": [
+                        "potatoes",
+                        "mushrooms",
+                        "broth"
+                    ],
+                    "khachapuri": [
+                        "cheeses",
+                        "egg"
+                    ],
+                    "beef samsa": [
+                        "beef",
+                        "onions"
+                    ],
+                    "chicken/potato samsa": [
+                        "chicken",
+                        "potatoes",
+                        "onions"
+                    ],
+                    "ukraninan borsh": [
+                        "meat",
+                        "beets",
+                        "vegetables",
+                        "broth",
+                        "sour cream",
+                        "pampushky"
+                    ],
+                    "mastava": [
+                        "rice",
+                        "meat",
+                        "vegetables",
+                        "herbs",
+                        "yogurt"
+                    ],
+                    "spicy korean carrot salad": [
+                        "carrots",
+                        "korean spices"
+                    ],
+                    "house salad": [
+                        "cucumbers",
+                        "onions",
+                        "tomatoes"
+                    ],
+                    "eastern european sour cabbage": [
+                        "cabbage"
+                    ],
+                    "red spicy sauce": [],
+                    "white garlic sauce": [],
+                    "kompot": [
+                        "berries"
+                    ],
+                    "water": [],
+                    "kvass": [],
+                    "mineral water barjomi": []
+                },
+                "menu_book": {
+                    "uzbek plov": [
+                        "carrots",
+                        "spices",
+                        "onions",
+                        "garlic",
+                        "lamb"
+                    ],
+                    "lamb khinkali": [
+                        "broth",
+                        "lamb"
+                    ],
+                    "beef khinkali": [
+                        "broth",
+                        "beef"
+                    ],
+                    "chicken khinkali": [
+                        "broth",
+                        "chicken"
+                    ],
+                    "potato/mushroom khinkali": [
+                        "potatoes",
+                        "mushrooms",
+                        "broth"
+                    ],
+                    "khachapuri": [
+                        "cheeses",
+                        "egg"
+                    ],
+                    "beef samsa": [
+                        "beef",
+                        "onions"
+                    ],
+                    "chicken/potato samsa": [
+                        "potatoes",
+                        "chicken",
+                        "onions"
+                    ],
+                    "ukraninan borsh": [
+                        "meat",
+                        "broth",
+                        "vegetables",
+                        "sour cream",
+                        "pampushky",
+                        "beets"
+                    ],
+                    "mastava": [
+                        "meat",
+                        "rice",
+                        "yogurt",
+                        "herbs",
+                        "vegetables"
+                    ],
+                    "spicy korean carrot salad": [
+                        "carrots",
+                        "korean spices"
+                    ],
+                    "house salad": [
+                        "cucumbers",
+                        "tomatoes",
+                        "onions"
+                    ],
+                    "eastern european sour cabbage": [
+                        "cabbage"
+                    ],
+                    "red spicy sauce": [],
+                    "white garlic sauce": [],
+                    "kompot": [
+                        "berries"
+                    ],
+                    "water": [],
+                    "kvass": [],
+                    "mineral water barjomi": []
+                },
+                "children": []
+            }
+        ]
+    },
+    "ChIJS8_veiHIQIYR4ncOSsLb6nQ": {
+        "url": "https://sites.google.com/view/ridnashkolahouston/",
+        "descriptor": "http://ridnashkolahouston.org/",
+        "scraped_items": {},
+        "menu_book": {},
+        "children": [
+            {
+                "url": "https://sites.google.com/view/ridnashkolahouston/admissions-academics/admissions/registration",
+                "descriptor": "https://sites.google.com/view/ridnashkolahouston/admissions-academics/admissions/registration",
+                "scraped_items": {},
+                "menu_book": {},
+                "children": []
+            }
+        ]
+    },
+    "ChIJ2bHd0losR4YRYd_qzxNOiIo": {
+        "url": "https://whollycrepe.net/menu-1",
+        "descriptor": "https://whollycrepe.net/menu-1",
+        "scraped_items": {
+            "crepe with melted butter & powdered sugar": [],
+            "crepe with lemon juice and sugar": [],
+            "crepe with cinnamon & sugar": [],
+            "crepe with any berry puree": [],
+            "crepe with nutella": [],
+            "cinnamon caramelized apple": [],
+            "caramel pears": [],
+            "smores": [],
+            "oreo": [],
+            "bananas foster": [],
+            "tvorog": [],
+            "nutella with strawberry & banana": [],
+            "nutella with berries": [],
+            "orange raspberry": [],
+            "berries & chocolate sauce": [],
+            "berries with puree": [],
+            "cream cheese & berries": [],
+            "greek yogurt with banana & honey": [],
+            "greek yogurt with pears & caramel": [],
+            "thick caramel with banana & strawberry": [],
+            "thick caramel with berries & nuts": [],
+            "peanut butter with banana & chocolate sauce": [],
+            "peanut butter, nutella with bananas & caramel sauce": [],
+            "build your own sweet crepe (blini)": [],
+            "chocolate cherry": [],
+            "vanilla cherry": [],
+            "nectarine crepe": [],
+            "apricot crepe": [],
+            "crepe with melted butter": [],
+            "savory buttered crepe with red salmon caviar": [],
+            "smoked salmon, cream cheese & cucumber": [],
+            "smoked salmon & veggies": [],
+            "smoked salmon with tvorog & veggies": [],
+            "cheese & mushrooms": [],
+            "grilled chicken with veggies": [],
+            "grilled chicken with jalapenos & salsa": [],
+            "grilled chicken with mushrooms": [],
+            "grilled chicken with feta & veggies": [],
+            "sliced meat with mushrooms": [],
+            "sliced meat with feta & veggies": [],
+            "sliced meat with veggies": [],
+            "ground beef & mushrooms": [],
+            "ground beef & veggies": [],
+            "ground beef with jalapenos & salsa": [],
+            "scrambled egg with veggies": [],
+            "scrambled egg with salmon & feta": [],
+            "scrambled egg with bacon": [],
+            "scrambled egg with shrimp": [],
+            "scrambled egg with ground beef": [],
+            "build your own savory crepe (blini)": [],
+            "cheese pizza crepe": [],
+            "pepperoni pizza crepe": [],
+            "hamburger pizza crepe": [],
+            "hawaiian pizza crepe": [],
+            "veggie pizza crepe": [],
+            "two fried eggs": [],
+            "two scrambled eggs": [],
+            "build your own three egg omelet": [],
+            "grechka porridge (whole grain buckwheat)": [],
+            "oatmeal": [],
+            "handmade pelmeni": [],
+            "handmade cheburek": [],
+            "handmade vareniki": [],
+            "side salad": [],
+            "garden salad": [],
+            "greek salad": [],
+            "raspberry walnut salad": [],
+            "grilled chicken salad": [],
+            "chef salad": [],
+            "russian borscht soup": [],
+            "grilled cheese": [],
+            "sliced meat": [],
+            "blt": [],
+            "grilled chicken": [],
+            "medovik - russian honey cake": [],
+            "handmade russian baklava": [],
+            "vanilla ice cream": [],
+            "custom ordered whole cakes": [],
+            "kvas": [],
+            "russian sodas": [],
+            "canned soft drinks": [],
+            "iced tea - unsweet": [],
+            "iced tea - sweet": [],
+            "lemonade": [],
+            "raspberry lemonade": [],
+            "orange juice": [],
+            "bottled water": [],
+            "milk": [],
+            "chocolate milk": [],
+            "hot tea": [],
+            "organic coffee": [],
+            "hot latte": [],
+            "hot chocolate": [],
+            "cinnamon hot chocolate": [],
+            "peppermint hot chocolate": []
+        },
+        "menu_book": {
+            "crepe with melted butter & powdered sugar": [],
+            "crepe with lemon juice and sugar": [],
+            "crepe with cinnamon & sugar": [],
+            "crepe with any berry puree": [],
+            "crepe with nutella": [],
+            "cinnamon caramelized apple": [],
+            "caramel pears": [],
+            "smores": [],
+            "oreo": [],
+            "bananas foster": [],
+            "tvorog": [],
+            "nutella with strawberry & banana": [],
+            "nutella with berries": [],
+            "orange raspberry": [],
+            "berries & chocolate sauce": [],
+            "berries with puree": [],
+            "cream cheese & berries": [],
+            "greek yogurt with banana & honey": [],
+            "greek yogurt with pears & caramel": [],
+            "thick caramel with banana & strawberry": [],
+            "thick caramel with berries & nuts": [],
+            "peanut butter with banana & chocolate sauce": [],
+            "peanut butter, nutella with bananas & caramel sauce": [],
+            "build your own sweet crepe (blini)": [],
+            "chocolate cherry": [],
+            "vanilla cherry": [],
+            "nectarine crepe": [],
+            "apricot crepe": [],
+            "crepe with melted butter": [],
+            "savory buttered crepe with red salmon caviar": [],
+            "smoked salmon, cream cheese & cucumber": [],
+            "smoked salmon & veggies": [],
+            "smoked salmon with tvorog & veggies": [],
+            "cheese & mushrooms": [],
+            "grilled chicken with veggies": [],
+            "grilled chicken with jalapenos & salsa": [],
+            "grilled chicken with mushrooms": [],
+            "grilled chicken with feta & veggies": [],
+            "sliced meat with mushrooms": [],
+            "sliced meat with feta & veggies": [],
+            "sliced meat with veggies": [],
+            "ground beef & mushrooms": [],
+            "ground beef & veggies": [],
+            "ground beef with jalapenos & salsa": [],
+            "scrambled egg with veggies": [],
+            "scrambled egg with salmon & feta": [],
+            "scrambled egg with bacon": [],
+            "scrambled egg with shrimp": [],
+            "scrambled egg with ground beef": [],
+            "build your own savory crepe (blini)": [],
+            "cheese pizza crepe": [],
+            "pepperoni pizza crepe": [],
+            "hamburger pizza crepe": [],
+            "hawaiian pizza crepe": [],
+            "veggie pizza crepe": [],
+            "two fried eggs": [],
+            "two scrambled eggs": [],
+            "build your own three egg omelet": [],
+            "grechka porridge (whole grain buckwheat)": [],
+            "oatmeal": [],
+            "handmade pelmeni": [],
+            "handmade cheburek": [],
+            "handmade vareniki": [],
+            "side salad": [],
+            "garden salad": [],
+            "greek salad": [],
+            "raspberry walnut salad": [],
+            "grilled chicken salad": [],
+            "chef salad": [],
+            "russian borscht soup": [],
+            "grilled cheese": [],
+            "sliced meat": [],
+            "blt": [],
+            "grilled chicken": [],
+            "medovik - russian honey cake": [],
+            "handmade russian baklava": [],
+            "vanilla ice cream": [],
+            "custom ordered whole cakes": [],
+            "kvas": [],
+            "russian sodas": [],
+            "canned soft drinks": [],
+            "iced tea - unsweet": [],
+            "iced tea - sweet": [],
+            "lemonade": [],
+            "raspberry lemonade": [],
+            "orange juice": [],
+            "bottled water": [],
+            "milk": [],
+            "chocolate milk": [],
+            "hot tea": [],
+            "organic coffee": [],
+            "hot latte": [],
+            "hot chocolate": [],
+            "cinnamon hot chocolate": [],
+            "peppermint hot chocolate": []
+        },
+        "children": [
+            {
+                "url": "https://whollycrepe.net/custom-orders",
+                "descriptor": "https://whollycrepe.net/custom-orders",
+                "scraped_items": {},
+                "menu_book": {},
+                "children": []
+            }
+        ]
+    }
+}

@@ -75,6 +75,7 @@ async def process_establishment(
     aggregated_results: list,
     address: str,
     keyword: str,
+    establishment_type: str,
     lookup_radius: int,
     good_local_trees: int
 ) -> int:
@@ -101,8 +102,8 @@ async def process_establishment(
 
                 for result in results:
                     aggregated_results.append({
-                        'keyword': (address, keyword, lookup_radius),
-                        'establishment_url': establishment_url,
+                        'google_url': f"'{website_link}'",
+                        'establishment_url': f"'{establishment_url}'",
                         'scraped_item': result.get('scraped_item'),
                         'ingredients': ', '.join(result.get('ingredients', [])),
                         'combined_score': result.get('combined_score'),
@@ -174,6 +175,7 @@ async def build_and_parse_tree(
                     aggregated_results,
                     address,
                     keyword,
+                    establishment_type,
                     lookup_radius,
                     good_local_trees
                 )
