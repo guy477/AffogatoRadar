@@ -1,7 +1,7 @@
 # webcrawler.py
 from _utils._util import *
 from .webscraper import WebScraper
-from .webnode import WebNode
+from backend.webnode import WebNode
 
 from collections import deque
 from rich.console import Console
@@ -10,8 +10,8 @@ import asyncio
 
 
 class WebCrawler:
-    def __init__(self, storage_dir: str = "../data", use_cache=True, scraper=None, max_concurrency=8, webpage_timeout=10000):
-        self.scraper = WebScraper(storage_dir, use_cache, webpage_timeout=webpage_timeout) if not scraper else scraper
+    def __init__(self, scraper=None, max_concurrency=8, webpage_timeout=10000):
+        self.scraper = WebScraper(webpage_timeout=webpage_timeout) if not scraper else scraper
         self.visited_urls = set()
         self.console = Console()
         self.visited_lock = asyncio.Lock()  # Lock to ensure exclusive access to visited_urls
@@ -19,7 +19,7 @@ class WebCrawler:
         self.semaphore = asyncio.Semaphore(max_concurrency)  # Limit concurrent fetches
         self.root_normalized_url = None     # To store the normalized root URL
 
-        util_logger.info(f"WebCrawler initialized with storage_dir='{storage_dir}', use_cache={use_cache}, "
+        util_logger.info(f"WebCrawler initialized with "
                      f"max_concurrency={max_concurrency}")
 
     def normalize_url(self, url, base_url=None):
@@ -49,8 +49,34 @@ class WebCrawler:
             return visited
         
 
+    async def fetch_with_retries(self, url, timeout, max_attempts=3):
+       """Fetch content from a URL with retry logic."""
+       for attempt in range(1, max_attempts + 1):
+           util_logger.debug(f"Attempt {attempt} to fetch URL: {url}")
+           try:
+               final_url, html = await asyncio.wait_for(
+                   self.scraper.fetch_and_cache_content(url),
+                   timeout=timeout
+               )
+               util_logger.debug(f"Successfully fetched URL: {url}")
+               return final_url, html
+           except asyncio.TimeoutError:
+               util_logger.warning(f"Timeout fetching URL: {url} (Attempt {attempt})")
+           except Exception as e:
+               util_logger.error(f"Error fetching URL: {url} (Attempt {attempt}): {e}")
+       util_logger.error(f"Failed to fetch URL: {url} after {max_attempts} attempts")
+       return None, None
+    
+    async def extract_subpage_links(self, url, html):
+       """Extract subpage links from HTML content."""
+       try:
+           return await self.scraper.find_subpage_links(url, html)
+       except Exception as e:
+           util_logger.error(f"Error extracting links from {url}: {e}")
+           return []
+
     async def process_node(self, node, depth, d_limit, queue):
-        """Process a single node, fetch its content, and enqueue child nodes."""        
+        """Process a single node, fetch its content, and enqueue child nodes using BFS."""        
         normalized_url = self.normalize_url(node.url)
         util_logger.info(f"Processing node: {normalized_url} at depth {depth}")
 
@@ -65,58 +91,40 @@ class WebCrawler:
 
         # Fetch the page content asynchronously, limiting concurrency with semaphore
         async with self.semaphore:
-            try:
-                while not html and err_count < 3:
-                    err_count += 1
-                    util_logger.debug(f"Attempt {err_count} to fetch content for URL: {normalized_url}")
-                    try:
-                        final_url, html = await asyncio.wait_for(
-                            self.scraper.fetch_and_cache_content(normalized_url),
-                            timeout=correct_timeout
-                        )
-                        util_logger.debug(f"Successfully fetched content for URL: {normalized_url}")
-                    except asyncio.TimeoutError:
-                        util_logger.warning(f"Timeout while fetching URL: {normalized_url} (Attempt {err_count})")
-                    except Exception as e:
-                        util_logger.error(f"Error fetching URL: {normalized_url} (Attempt {err_count}): {e}")
-                
-                if err_count == 3 and not html:
-                    util_logger.error(f"Failed to fetch page {node.url} after 3 attempts.")
-                    return
-            except Exception as e:
-                util_logger.error(f"Unexpected error while fetching {normalized_url}: {e}")
-                return
-
+            final_url, html = await self.fetch_with_retries(normalized_url, correct_timeout)
             if not html:
-                util_logger.error(f"No HTML content fetched for URL: {normalized_url}")
                 return
 
             # Normalize final_url after redirection and mark it as visited
-            if final_url:
-                normalized_final_url = self.normalize_url(final_url)
-                await self.mark_as_visited(normalized_final_url)
-                # If the final URL is in the root URL, skip
-                if normalized_final_url == self.root_normalized_url and depth > 0:
-                    util_logger.debug(f"Final URL {normalized_final_url} is the root URL and depth > 0. Skipping.")
-                    return
+            if not final_url:
+                util_logger.error(f"FATAL ERROR: Final URL not found for {normalized_url}")
+                return
+
+            normalized_final_url = self.normalize_url(final_url)
+            await self.mark_as_visited(normalized_final_url)
+            
+            # If the final URL is the root URL and depth > 0, skip to prevent cycles
+            if normalized_final_url == self.root_normalized_url and depth > 0:
+                util_logger.debug(f"Final URL {normalized_final_url} is the root URL and depth > 0. Skipping.")
+                return
 
             if not self.scraper.web_fetcher.is_pdf_url(final_url):
-                try:
-                    subpage_links = await self.scraper.find_subpage_links(normalized_url, html)
-                    util_logger.debug(f"Found {len(subpage_links)} subpage links in URL: {normalized_url}")
-                except Exception as e:
-                    util_logger.error(f"Error finding subpage links in URL: {normalized_url}: {e}")
-                    return
+                subpage_links = await self.extract_subpage_links(normalized_url, html)
 
         for link in subpage_links:
             normalized_link = self.normalize_url(link, base_url=normalized_url)
 
-            if depth >= d_limit:
+            if depth + 1 > d_limit:
                 util_logger.debug(f"Depth limit reached for URL: {normalized_link}")
                 continue
 
             if await self.is_visited(normalized_link):
                 util_logger.debug(f"URL already visited: {normalized_link}")
+                continue
+
+            # Enhanced Cycle Detection
+            if has_cycle(normalized_link):
+                util_logger.warning(f"Cycle detected in URL path: {normalized_link}")
                 continue
 
             await self.mark_as_visited(normalized_link)
@@ -132,7 +140,7 @@ class WebCrawler:
             util_logger.info(f"Enqueued child URL: {normalized_link} at depth {depth + 1}")
 
     async def crawl(self, root_node, d_limit):
-        """Iteratively crawl subpages starting from the given root node using BFS."""
+        """Crawl the website using BFS by leveraging the queue."""
         queue = asyncio.Queue()
         normalized_url = self.normalize_url(root_node.url)
 
@@ -161,7 +169,7 @@ class WebCrawler:
         util_logger.info("Crawling completed.")
 
     async def worker(self, queue, d_limit):
-        """Worker task to process nodes from the queue."""
+        """Worker task to process nodes from the queue in BFS order."""
         while True:
             try:
                 node, depth = await queue.get()
@@ -174,7 +182,7 @@ class WebCrawler:
                 queue.task_done()
 
     async def start_crawling(self, start_url, d_limit=2):
-        """Start the crawling process from the root node asynchronously."""
+        """Start the crawling process from the root node asynchronously using BFS."""
         util_logger.info(f"Starting crawling process for URL: {start_url} with depth limit: {d_limit}")
         
         # Clear the visitation set and create the root node

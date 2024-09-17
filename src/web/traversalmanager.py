@@ -1,12 +1,10 @@
 # traversalmanager.py
 from _utils._util import *
 
-# from .contentparser import ContentParser
-# from .llmhandler import LLMHandler
+from web.cachemanager import CacheManager
 
 class TraversalManager:
-    def __init__(self, use_cache=True, similarity_threshold=0.6, max_concurrency=10, scraper=None, llm_handler=None, cache_manager=None, content_parser=None):
-        self.use_cache = use_cache
+    def __init__(self, similarity_threshold=0.6, max_concurrency=10, scraper=None, llm_handler=None, cache_manager=None, content_parser=None):
         self.similarity_threshold = similarity_threshold
         self.semaphore = asyncio.Semaphore(max_concurrency)
         self.visited_urls = set()
@@ -19,8 +17,7 @@ class TraversalManager:
         self.content_parser = content_parser
 
         util_logger.info(
-            "TraversalManager initialized with use_cache=%s, similarity_threshold=%.2f, max_concurrency=%d",
-            self.use_cache,
+            "TraversalManager initialized with similarity_threshold=%.2f, max_concurrency=%d",
             self.similarity_threshold,
             max_concurrency
         )
@@ -38,8 +35,7 @@ class TraversalManager:
 
     async def process_dfs_node(self, node, parent):
         util_logger.info("Processing DFS node: %s", node.url)
-        assert self.use_cache, "Caching must be enabled for DFS processing."
-
+        
         semaphored = 0
         async with self.node_lock:
             cached_scraped_items = self.cache_manager.get_cached_data('url_to_itemize', node.url)
@@ -72,6 +68,7 @@ class TraversalManager:
                     util_logger.info("Content parsed for URL: %s", node.url)
                     
                     scraped_items = await self.llm_handler.extract_scraped_items(filtered_content, content_type)
+
                     node.scraped_items = scraped_items
                     semaphored = 1
                     util_logger.info("Extracted %d scraped items for URL: %s", len(scraped_items), node.url)

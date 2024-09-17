@@ -3,18 +3,17 @@ from _utils._util import *
 
 from .webfetcher import WebFetcher
 from .contentparser import ContentParser
-from .llmhandler import LLMHandler
-from .cachemanager import CacheManager
+from backend.llmhandler import LLMHandler
+from web.cachemanager import CacheManager
 from .traversalmanager import TraversalManager
 
 from urllib.robotparser import RobotFileParser
 
 class WebScraper:
-    def __init__(self, storage_dir: str = "../data", use_cache=True, max_concurrency=10, webpage_timeout=1000, similarity_threshold=0.6):
-        util_logger.info("Initializing WebScraper with parameters: storage_dir=%s, use_cache=%s, max_concurrency=%d, webpage_timeout=%d, similarity_threshold=%.2f",
-                     storage_dir, use_cache, max_concurrency, webpage_timeout, similarity_threshold)
-        
-        self.use_cache = use_cache
+    def __init__(self, max_concurrency=10, webpage_timeout=1000, similarity_threshold=0.6):
+        util_logger.info("Initializing WebScraper with parameters: max_concurrency=%d, webpage_timeout=%d, similarity_threshold=%.2f",
+                    max_concurrency, webpage_timeout, similarity_threshold)
+
         self.webpage_timeout = webpage_timeout
         self.similarity_threshold = similarity_threshold
         self.max_concurrency = max_concurrency
@@ -24,10 +23,9 @@ class WebScraper:
 
         self.web_fetcher = WebFetcher(webpage_timeout=self.webpage_timeout)
         self.content_parser = ContentParser()
-        self.cache_manager = CacheManager(storage_dir)
+        self.cache_manager = CacheManager()
         self.llm_handler = LLMHandler()
         self.traversal_manager = TraversalManager(
-            use_cache=self.use_cache,
             similarity_threshold=self.similarity_threshold,
             max_concurrency=self.max_concurrency,
             scraper=self,
@@ -39,7 +37,7 @@ class WebScraper:
         util_logger.info("WebScraper initialized successfully.")
 
     async def fetch_and_cache_content(self, url):
-        util_logger.info("Fetching content for URL: %s", url)
+        util_logger.info("Fetching and caching contents for URL: %s", url)
 
         # Check robots.txt compliance
         if not await self.is_compliant(url):
@@ -48,7 +46,7 @@ class WebScraper:
         
         # Check cache first
         redirect_url = self.cache_manager.get_cached_data('source_dest', url)
-        if self.use_cache and redirect_url:
+        if redirect_url:
             util_logger.debug("Cache hit for URL: %s, redirecting to: %s", url, redirect_url)
             content = self.cache_manager.get_cached_data('url_to_page_data', redirect_url)
             if content:
@@ -71,6 +69,7 @@ class WebScraper:
 
         # Cache the final page content
         try:
+
             self.cache_manager.set_cached_data('source_dest', url, final_url)
             self.cache_manager.set_cached_data('url_to_page_data', final_url, content)
             util_logger.info("Content cached for URL: %s", url)
@@ -79,7 +78,7 @@ class WebScraper:
 
         return final_url, content
 
-    async def source_menu_link(self, google_maps_url):
+    async def source_establishment_url(self, google_maps_url):
         util_logger.info("Retrieving menu link from Google Maps URL: %s", google_maps_url)
         
         final_url, html_content = await self.fetch_and_cache_content(google_maps_url)
@@ -92,7 +91,7 @@ class WebScraper:
             util_logger.info("Menu link found: %s for URL: %s", menu_link, final_url)
             return menu_link
         else:
-            util_logger.warning("Menu link not found for URL: %s", final_url)
+            util_logger.warning("Menu/website link not found for URL: %s", final_url)
             return None
 
     def find_menu_link_html(self, html_content):
@@ -103,7 +102,15 @@ class WebScraper:
             if menu_element and menu_element.get('href'):
                 util_logger.info("Menu link element found with href: %s", menu_element['href'])
                 return menu_element['href']
-            util_logger.debug("Menu link element not found in HTML content.")
+            util_logger.info("Menu link element not found in HTML content.")
+
+
+            menu_element = soup.find('a', {'data-item-id': 'authority', 'data-tooltip': 'Open website'})
+            if menu_element and menu_element.get('href'):
+                util_logger.info("Menu link element found with href: %s", menu_element['href'])
+                return menu_element['href']
+            util_logger.info("Website link element not found in HTML content.")
+
             return None
         except Exception as e:
             util_logger.error("Error parsing HTML content for menu link. Error: %s", str(e))
@@ -167,7 +174,7 @@ class WebScraper:
                         robot_parser.parse(content.splitlines())
                         util_logger.info(f"robots.txt fetched and parsed for domain: {domain}")
                     else:
-                        util_logger.warning(f"Failed to fetch robots.txt for domain: {domain}, status: {response.status}. Assuming all URLs are allowed.")
+                        util_logger.error(f"Failed to fetch robots.txt for domain: {domain}, status: {response.status}. Assuming all URLs are allowed.")
                         robot_parser = None  # No robots.txt available, allow all
         except Exception as e:
             util_logger.error(f"Error fetching robots.txt for domain: {domain}. Error: {e}. Assuming all URLs are allowed.")
@@ -212,34 +219,42 @@ class WebScraper:
         util_logger.info("Evaluating embedding relevance for %d URLs.", len(full_urls))
         relevant_urls = []
         try:
-            if self.use_cache:
-                util_logger.debug("Checking cache for embedding relevance.")
-                hashed_data = [(url, self.cache_manager.get_cached_data('embedding_relevance', url)) for url in full_urls]
-                cached_urls = [data for data in hashed_data if data[1] is not None]
-                relevant_urls.extend(cached_urls)
-                full_urls = [url for url in full_urls if self.cache_manager.get_cached_data('embedding_relevance', url) is None]
-                util_logger.info("Cache hit for %d URLs, remaining URLs to evaluate: %d", len(cached_urls), len(full_urls))
-            else:
-                hashed_data = []
-                util_logger.debug("Cache usage disabled. Proceeding without cache.")
+            util_logger.debug("Checking cache for embedding relevance.")
+            # Retrieve cached relevance
+            cached_data = {
+                url: self.cache_manager.get_cached_data('embedding_relevance', url)
+                for url in full_urls
+            }
+            # Separate cached and uncached URLs
+            cached_urls = [(url, relevance) for url, relevance in cached_data.items() if relevance is not None]
+            uncached_urls = [url for url, relevance in cached_data.items() if relevance is None]
 
-            if full_urls:
-                util_logger.info("Evaluating relevance for %d uncached URLs.", len(full_urls))
-                new_relevant_urls = await self.llm_handler.find_url_relevance(full_urls)
-                for relevant_url in new_relevant_urls:
-                    url, relevance = relevant_url
-                    if not self.cache_manager.get_cached_data('embedding_relevance', url):
-                        self.cache_manager.set_cached_data('embedding_relevance', url, relevance)
-                        util_logger.info("Cached embedding relevance for URL: %s", url)
-                relevant_urls.extend(new_relevant_urls)
+            util_logger.info(
+                "Cache hit for %d URLs, remaining URLs to evaluate: %d",
+                len(cached_urls),
+                len(uncached_urls)
+            )
+            relevant_urls.extend(cached_urls)
 
-            # Combine cached and newly evaluated relevant URLs
-            for data in hashed_data:
-                relevant_urls.append(data)
+            if uncached_urls:
+                util_logger.info("Evaluating relevance for %d uncached URLs.", len(uncached_urls))
+                new_relevant_urls = await self.llm_handler.find_url_relevance(uncached_urls)
+                for final_url, relevance in new_relevant_urls:
+                    if relevance is not None:
+                        self.cache_manager.set_cached_data('embedding_relevance', final_url, relevance)
+                        util_logger.info("Cached embedding relevance for URL: %s", final_url)
+                        relevant_urls.append((final_url, relevance))
 
             # Filter URLs based on similarity threshold
-            filtered_urls = [url for url, relevance in relevant_urls if relevance and float(relevance) > self.similarity_threshold]
-            util_logger.info("Filtered %d URLs based on similarity threshold of %.2f.", len(filtered_urls), self.similarity_threshold)
+            filtered_urls = [
+                url for url, relevance in relevant_urls
+                if relevance is not None and float(relevance) > self.similarity_threshold
+            ]
+            util_logger.info(
+                "Filtered %d URLs based on similarity threshold of %.2f.",
+                len(filtered_urls),
+                self.similarity_threshold
+            )
 
             return filtered_urls
         except Exception as e:

@@ -21,20 +21,46 @@ TARGET_THRESHOLDS: Items of interest with similarity values above these values s
 
 CURATED_PLACES: A list of places around which to base your search.
 
-
 # NOTE: MORE SETTINGS TO COME...
 """
 
-
 # <------------------------------------------------------------------------>
 SELECTED_ADDRESS = "Houston, Texas"
-LOOKUP_RADIUS = 50000
+LOOKUP_RADIUS = 500000
 
 # Global Variables
 SIMILARITY_THRESHOLD = 0.550  # Ignore any links with embedding cos-similarity less than this
 MAX_CONCURRENCY = 4
 WEBPAGE_TIMEOUT = 15000  # milliseconds
 
+SEARCH_REQUEST = f"ukrainian food"
+ESTABLISHMENT_TYPE = "food,restaurant,bar"
+
+TARGET_ATTRIBUTES = { # The attributes of the dish you're interested in.
+    "name": ["borscht"],  # Full, common names of the menu item
+    "ingredient_1": ["pork", "chicken", "beef"],  # Single word ingredients
+    "ingredient_2": ["beet", "cabbage"],
+    "ingredient_3": ["potato", "carrot", "onion"],
+    # "ingredient_3": [],
+}
+
+# What are we looking for?
+# TARGET_ATTRIBUTES = {
+#     "name": ["chicken parmesan"],  # Full, common names of the menu item
+#     "ingredient_1": ["chicken"],   # Single word ingredients
+#     "ingredient_2": ["parmesan", "mozzarella"],
+#     "ingredient_3": ["marinara", "tomato", "red"],
+# }
+
+# TARGET_ATTRIBUTES = {
+#     "name": ["fish and chips"],       # Full, common names of the menu item
+#     "ingredient_1": ["fish"],         # Single word ingredients
+#     "ingredient_2": ["potatoes"],
+#     "ingredient_3": [],
+# }
+
+
+# <------------------------------------------------------------------------>
 
 USE_CACHE = True
 
@@ -44,7 +70,6 @@ TARGET_URL_KEYWORDS = [
                 'happy-hour', 'reservation', 'meals', 'sides', 'entrees', 'appetizers', 'cuisine', 'dining', 'snack', 'side', 'starter',
                 'buffet'
             ]
-
 
 PROMPT_HTML_EXTRACT = f"""Given the HTML content of a restaurant's webpage, extract the menu items in a structured format as follows:
 - Each line should represent one menu item.
@@ -72,68 +97,12 @@ Now, extract the menu items from the following HTML:
 {{}}
 ```"""
 
-# What are we looking for?
-TARGET_ATTRIBUTES = {
-    "name": ["chicken parmesan"],  # Full, common names of the menu item
-    "ingredient_1": ["chicken"],   # Single word ingredients
-    "ingredient_2": ["parmesan", "mozzarella"],
-    "ingredient_3": ["marinara", "tomato", "red"],
-}
-
-
 TARGET_THRESHOLDS = {
     "STRICT": 0.80,  # Very likely to be a chicken parmesan
     "LENIENT": 0.70,  # Same ingredients, but not exclusively Chicken Parmesans
     "EXPLORATIVE": 0.60,  # Very explorative
 }
 
-TARGET_THRESHOLD = TARGET_THRESHOLDS['LENIENT']
-
-# <------------------------------------------------------------------------>
-
-# Restaurant Lists
-RESTAURANT_NAMES_BASE = [
-    "Pappadeaux Seafood Kitchen", "Dunkin Donuts", "McDonalds",
-    "Whataburger", "Starbucks", "Taco Bell", "Chick-fil-A", "Cocohodo"
-]
-
-RESTAURANT_NAMES_COMMON = [
-    "Denny's", "IHOP", "Buffalo Wild Wings", "The Capital Grille",
-    "Texas Roadhouse", "Outback Steakhouse", "Fogo de Chão", "Steak 48",
-    "Pappadeaux Seafood Kitchen", "The Cheesecake Factory", "Morton\'s The Steakhouse",
-    "Chama Gaucha Brazilian Steakhouse", "Saltgrass Steakhouse", "Pappas Bros. Steakhouse",
-    "Vic & Anthony's", "Brennan's of Houston", "Fleming's Prime Steakhouse",
-    "Lucille's", "Cracker Barrel", "Kenny & Ziggy's", "Turner's",
-    "Chili's", "Ruth's Chris Steak House", "BJ's Restaurant & Brewhouse",
-    "The Melting Pot", "Nancy's Hustle", "Red Lobster",
-    "Maggiano's Little Italy", "Olive Garden", "Yard House"
-]
-
-RESTAURANT_NAMES_COMMON_2 = [
-    "Perry's Steakhouse & Grille", "The Palm", "Seasons 52", "Bonefish Grill",
-    "Grimaldi's Pizzeria", "Black Walnut Cafe", "The Union Kitchen",
-    "Gringo's Mexican Kitchen", "Eddie V's Prime Seafood", "Landry's Seafood House",
-    "Razzoo's Cajun Cafe", "PF Chang's", "Mastro's Steakhouse",
-    "Yia Yia Mary's Pappas Greek Kitchen", "Grotto Ristorante",
-    "Truluck's Seafood Steak & Crab House", "Carrabba's Italian Grill",
-    "Cyclone Anaya's Tex-Mex Cantina", "Del Frisco's Double Eagle Steakhouse",
-    "LongHorn Steakhouse", "Papa John's Pizza", "Bubba Gump Shrimp Co.",
-    "Rudy's “Country Store” and Bar-B-Q", "Chipotle Mexican Grill",
-    "Topgolf", "Pappasito's Cantina", "Five Guys", "Ninfa's on Navigation",
-    "Torchy's Tacos"
-]
-
-RESTAURANT_NAMES_NICHE = [
-    "Lucille's", "Theodore Rex", "The Breakfast Klub", "Crawfish & Noodles",
-    "POST Houston", "Kiran's", "B&B Butchers", "Squable", "The Blind Goat",
-    "Feges BBQ", "Huynh Restaurant", "Pinkerton's Barbecue", "Kâu Ba",
-    "Armando's", "Phat Eatery", "Le Jardinier", "Elro Pizza + Crudo",
-    "State of Grace", "Nancy's Hustle", "Truth BBQ", "Bludorn", "Tris",
-    "Rosalie Italian Soul", "Xochi", "Killen's Barbecue", "Backstreet Café",
-    "Les Noodle", "Uchi"
-]
-
-# Select the restaurant list to use
-CURATED_PLACES = RESTAURANT_NAMES_COMMON_2  # You can modify this as needed
+TARGET_THRESHOLD = TARGET_THRESHOLDS['EXPLORATIVE']
 
 # <------------------------------------------------------------------------>

@@ -59,33 +59,16 @@ class ContentParser:
             raise
 
     def filter_html_for_menu(self, html):
-        """Aggressively remove HTML elements that are unlikely to contain menu items."""
+        """Filter HTML content to extract text for menu items."""
         util_logger.debug("Starting HTML filtering for menu items.")
         try:
             soup = BeautifulSoup(html, 'html.parser')
             body = soup.body or soup
             if body:
-                remove_tags = ['script', 'style']
-                for tag in body(remove_tags):
-                    tag.decompose()
-                util_logger.info(f"Removed tags: {remove_tags}")
-
-                comments_removed = 0
-                for comment in body.find_all(string=lambda text: isinstance(text, Comment)):
-                    comment.extract()
-                    comments_removed += 1
-                util_logger.info(f"Removed {comments_removed} comments from HTML.")
-
-                elements_processed = 0
-                for element in body.find_all(True):
-                    if element.attrs:
-                        element.attrs = {}
-                        elements_processed += 1
-                util_logger.info(f"Cleared attributes from {elements_processed} elements.")
-
-                filtered_text = body.get_text(separator='')
+                # Extract text content while preserving the text between tags
+                filtered_text = body.get_text(separator=' ', strip=True)
                 util_logger.info("HTML content filtered successfully.")
-                return str(filtered_text)
+                return filtered_text
             else:
                 util_logger.warning("No <body> tag found in the HTML.")
                 return "No <body> tag found in the HTML"

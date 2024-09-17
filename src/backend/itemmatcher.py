@@ -1,8 +1,6 @@
 from _utils._util import *
-from .local_storage import *
+from web.cachemanager import CacheManager
 from .llm import *
-
-from tqdm.asyncio import tqdm
 
 class ItemMatcher:
     def __init__(self, target_attributes, attribute_weights=None):
@@ -19,9 +17,9 @@ class ItemMatcher:
             util_logger.info("Attribute weights provided and assigned.")
             util_logger.debug(f"Attribute weights: {self.attribute_weights}")
         
-        # Initialize LocalStorage caching logic
-        self.embedding_cache = LocalStorage(db_name='embedding_target_menu.db')
-        util_logger.info("Initialized LocalStorage for embedding caching.")
+        # Initialize CacheManager
+        self.cache_manager = CacheManager()
+        util_logger.info("Initialized CacheManager for embedding caching.")
 
         # Initialize LLM class
         self.llm = LLM()
@@ -30,9 +28,6 @@ class ItemMatcher:
         self.attribute_phrase_embeddings = {}
         util_logger.debug("Attribute phrase embeddings initialized as empty dictionary.")
 
-        # Uncomment if precomputing embeddings at initialization
-        # self.precompute_attribute_embeddings()
-
     async def get_phrase_embeddings(self, phrases):
         util_logger.debug("Fetching phrase embeddings.")
         embeddings = {}
@@ -40,29 +35,40 @@ class ItemMatcher:
         cache_hits = 0
         cache_misses = 0
 
-        for phrase in phrases:
-            phrase_lower = phrase.lower()
-            cached_embedding = self.embedding_cache.get_data_by_hash(phrase_lower)
+        # Normalize phrases to lowercase and strip whitespace, and remove duplicates
+        normalized_phrases = set(phrase.lower().strip() for phrase in phrases)
+        util_logger.debug(f"Normalized phrases to fetch: {len(normalized_phrases)} unique phrases.")
+
+        for phrase in normalized_phrases:
+            if not phrase:
+                util_logger.warning("Encountered empty phrase after normalization. Skipping.")
+                continue
+            cached_embedding = self.cache_manager.get_cached_data('embedding_relevance', phrase)
             if cached_embedding is not None:
-                embeddings[phrase_lower] = np.frombuffer(cached_embedding, dtype=np.float32)
-                cache_hits += 1
+                try:
+                    embeddings[phrase] = np.array(cached_embedding, dtype=np.float32)
+                    cache_hits += 1
+                except (ValueError, TypeError) as e:
+                    util_logger.error(f"Error converting cached embedding for phrase '{phrase}': {e}. Fetching anew.")
+                    phrases_to_fetch.append(phrase)
+                    cache_misses += 1
             else:
-                phrases_to_fetch.append(phrase_lower)
+                phrases_to_fetch.append(phrase)
                 cache_misses += 1
 
-        util_logger.debug(f"Cache hits: {cache_hits}, Cache misses: {cache_misses} out of {len(phrases)} phrases.")
+        util_logger.debug(f"Cache hits: {cache_hits}, Cache misses: {cache_misses} out of {len(normalized_phrases)} unique phrases.")
 
         if phrases_to_fetch:
             util_logger.info(f"Fetching {len(phrases_to_fetch)} new embeddings from LLM.")
             try:
                 new_embeddings = await self.llm.get_embeddings(phrases_to_fetch)
-                for i, phrase in enumerate(phrases_to_fetch):
-                    embedding = new_embeddings[i]
-                    embeddings[phrase] = embedding
-                    # Save to cache
-                    self.embedding_cache.save_data(
+                for phrase, embedding in zip(phrases_to_fetch, new_embeddings):
+                    embeddings[phrase] = np.array(embedding, dtype=np.float32)
+                    # Save to cache as a list to ensure JSON serialization
+                    self.cache_manager.set_cached_data(
+                        'embedding_relevance',
                         phrase,
-                        np.array(embedding, dtype=np.float32).tobytes()
+                        embedding.tolist()
                     )
                 util_logger.info(f"Fetched and cached {len(phrases_to_fetch)} new embeddings.")
             except Exception as e:
@@ -75,7 +81,12 @@ class ItemMatcher:
         util_logger.info("Precomputing attribute phrase embeddings.")
         unique_phrases = set()
         for phrases in self.target_attributes.values():
-            unique_phrases.update([phrase.lower() for phrase in phrases])
+            for phrase in phrases:
+                normalized_phrase = phrase.lower().strip()
+                if normalized_phrase:
+                    unique_phrases.add(normalized_phrase)
+                else:
+                    util_logger.warning("Encountered empty phrase after normalization. Skipping.")
         util_logger.debug(f"Number of unique phrases to embed: {len(unique_phrases)}")
 
         try:
@@ -84,12 +95,16 @@ class ItemMatcher:
         except Exception as e:
             util_logger.error(f"Failed to precompute attribute embeddings: {e}")
             raise e
-
-    def get_ngrams(self, text_list, max_n=3):
+        
+    def get_ngrams(self, text_list: List[str], max_n: int = 3) -> List[str]:
         util_logger.debug(f"Generating n-grams for a list of {len(text_list)} texts with max_n={max_n}.")
         ngrams = []
         for text in text_list:
-            words = text.lower().split()
+            normalized_text = text.lower().strip()
+            if not normalized_text:
+                util_logger.warning("Encountered empty text after normalization. Skipping.")
+                continue
+            words = normalized_text.split()
             for n in range(1, max_n + 1):
                 ngrams.extend([' '.join(words[i:i + n]) for i in range(len(words) - n + 1)])
         util_logger.debug(f"Generated {len(ngrams)} n-grams.")
@@ -121,12 +136,15 @@ class ItemMatcher:
         for attribute, phrases in self.target_attributes.items():
             max_similarity = 0
             for phrase in phrases:
-                phrase_lower = phrase.lower()
+                phrase_lower = phrase.lower().strip()
+                if not phrase_lower:
+                    util_logger.warning("Encountered empty phrase after normalization. Skipping.")
+                    continue
                 phrase_embedding = self.attribute_phrase_embeddings.get(phrase_lower)
                 if phrase_embedding is None:
                     util_logger.warning(f"Embedding for phrase '{phrase_lower}' not found.")
                     continue
-                
+
                 for ngram, ngram_embedding in scraped_item_embeddings.items():
                     similarity = self.cosine_sim(ngram_embedding, phrase_embedding)
                     if similarity > max_similarity:
@@ -139,16 +157,26 @@ class ItemMatcher:
 
     async def calculate_target_similarity(self, scraped_item_name):
         util_logger.debug("Calculating target similarity based on item name.")
+        normalized_name = scraped_item_name.lower().strip()
+        if not normalized_name:
+            util_logger.warning("Scraped item name is empty after normalization. Returning similarity score 0.0.")
+            return 0.0
         try:
-            scraped_item_embedding = (await self.get_phrase_embeddings([scraped_item_name.lower()]))[scraped_item_name.lower()]
-            util_logger.debug(f"Obtained embedding for scraped item name '{scraped_item_name.lower()}'.")
+            scraped_item_embedding = (await self.get_phrase_embeddings([normalized_name]))[normalized_name]
+            util_logger.debug(f"Obtained embedding for scraped item name '{normalized_name}'.")
+        except KeyError:
+            util_logger.error(f"Embedding for scraped item name '{normalized_name}' not found.")
+            return 0.0
         except Exception as e:
             util_logger.error(f"Failed to get embedding for scraped item name '{scraped_item_name}': {e}")
             raise e
 
         max_similarity = 0
         for name in self.target_attributes.get('name', []):
-            name_lower = name.lower()
+            name_lower = name.lower().strip()
+            if not name_lower:
+                util_logger.warning("Encountered empty name after normalization. Skipping.")
+                continue
             name_embedding = self.attribute_phrase_embeddings.get(name_lower)
             if name_embedding is None:
                 util_logger.warning(f"Embedding for target name '{name_lower}' not found.")
@@ -230,72 +258,3 @@ class ItemMatcher:
 
         util_logger.info("Completed hybrid similarity tests.")
         return results
-
-
-if __name__ == "__main__":
-    # Configure logging level (can be adjusted as needed)
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s [%(levelname)s] %(message)s',
-        handlers=[
-            logging.StreamHandler()
-        ]
-    )
-
-    # Example target attributes (e.g., chicken Parmesan)
-    target_attributes = {
-        "name": ["chicken parmesan"],  # Full, common names of the menu item
-        "ingredient_1": ["chicken"],
-        "ingredient_2": ["parmesan", "mozzarella"],
-        "ingredient_3": ["marinara", "tomato", "red"],
-    }
-
-    # Example menu items with ingredients
-    scraped_items = {
-        "classic chicken Parmesan": ["chicken", "parmesan", "tomato sauce"],
-        "spaghetti with chicken Parmesan": ["spaghetti", "chicken", "parmesan"],
-        "grilled chicken with mozzarella and marinara": ["chicken", "mozzarella", "marinara sauce"],
-        "Parmesan-crusted chicken with tomato sauce": ["chicken", "parmesan", "tomato sauce"],
-        "baked chicken Parmesan with marinara": ["chicken", "parmesan", "marinara sauce"],
-        "fried chicken with mozzarella cheese": ["chicken", "mozzarella"],
-        "chicken with tomato and mozzarella": ["chicken", "tomato", "mozzarella"],
-        "breaded chicken with red pepper sauce": ["chicken", "breaded", "red pepper sauce"],
-        "chicken parm pizza": ["chicken", "parmesan", "pizza dough", "tomato sauce"],
-
-        # Similar ingredients but different dishes
-        "eggplant Parmesan": ["eggplant", "parmesan", "tomato sauce"],
-        "mozzarella-stuffed chicken": ["chicken", "mozzarella"],
-        "chicken Alfredo with Parmesan cheese": ["chicken", "parmesan", "alfredo sauce"],
-        "cheesy chicken lasagna": ["chicken", "mozzarella", "lasagna noodles", "tomato sauce"],
-        "spaghetti and marinara sauce with mozzarella": ["spaghetti", "mozzarella", "marinara sauce"],
-        "grilled chicken with Parmesan cream sauce": ["chicken", "parmesan", "cream sauce"],
-        "chicken sandwich with red sauce": ["chicken", "bread", "tomato sauce"],
-        "baked ziti with mozzarella and marinara": ["ziti", "mozzarella", "marinara sauce"],
-        "rotisserie chicken with Parmesan garnish": ["rotisserie chicken", "parmesan"],
-        "pasta with marinara and meatballs": ["pasta", "marinara sauce", "meatballs"],
-        
-        # Least similar, possibly some shared ingredients
-        "chicken piccata": ["chicken", "lemon", "capers", "butter"],
-        "grilled chicken with roasted tomatoes": ["chicken", "tomatoes"],
-        "tomato and mozzarella salad": ["tomato", "mozzarella", "salad greens"],
-        "mozzarella sticks with marinara sauce": ["mozzarella", "breadcrumbs", "marinara sauce"],
-        "buffalo chicken dip with cheese": ["chicken", "buffalo sauce", "cheese"],
-        "BBQ chicken with cheese": ["chicken", "bbq sauce", "cheddar cheese"]
-    }
-
-    matcher = ItemMatcher(target_attributes)
-
-    # Optionally precompute embeddings at startup
-    # asyncio.run(matcher.precompute_attribute_embeddings())
-
-    try:
-        results = asyncio.run(matcher.run_hybrid_similarity_tests(scraped_items))
-        util_logger.info("Hybrid similarity testing completed. Displaying results:")
-        for result in results:
-            print(f"Menu Item: {result['scraped_item']}")
-            print(f"Ingredients: {', '.join(result['ingredients'])}")
-            print(f"Combined Similarity Score: {result['combined_score']:.4f}")
-            print(f"Attribute Similarity Scores: {result['attribute_scores']}\n")
-        ### NOTE: .75 threshold works for the above set. 
-    except Exception as e:
-        util_logger.error(f"An error occurred during the matching process: {e}")

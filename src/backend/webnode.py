@@ -10,7 +10,6 @@ class WebNode:
         self.scraped_items = {}
         self.menu_book = defaultdict(set)
         self.children = []  # List of WebNode objects (children of this node)
-        util_logger.debug(f"WebNode initialized. Current children count: {len(self.children)}")
 
     def add_child(self, child_node):
         """Add a child node to the current node."""
@@ -44,7 +43,7 @@ class WebNode:
     def visualize(self, parent_tree=None):
         """Recursively visualize the web structure using the rich library."""
         if parent_tree is None:
-            util_logger.info(f"Starting visualization for root URL: {self.url}")
+            util_logger.debug(f"Starting visualization for root URL: {self.url}")
             tree = Tree(f"[link={self.url}]{self.url}[/link] (root)")
         else:
             descriptor = self.descriptor or self.url
@@ -56,7 +55,7 @@ class WebNode:
             child.visualize(tree)
 
         if parent_tree is None:
-            util_logger.info(f"Visualization completed for root URL: {self.url}")
+            util_logger.debug(f"Visualization completed for root URL: {self.url}")
         return tree if parent_tree is None else parent_tree
 
     def to_dict(self):

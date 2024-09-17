@@ -1,13 +1,14 @@
 # webfetcher.py
 from _utils._util import *
 
-from playwright.async_api import async_playwright, Page
+from playwright.async_api import async_playwright, Page, TimeoutError
 
 class WebFetcher:
     def __init__(self, webpage_timeout=1000):
         self.webpage_timeout = webpage_timeout
         self.playwright = None
         self.browser = None
+        self.context = None
         util_logger.info("WebFetcher initialized with webpage_timeout=%d ms", self.webpage_timeout)
 
     async def start_playwright(self):
@@ -18,6 +19,7 @@ class WebFetcher:
                 self.playwright = await async_playwright().start()
                 self.browser = await self.playwright.firefox.launch(headless=False)
                 util_logger.info("Playwright started and Firefox browser launched.")
+                await self.start_context()
             except Exception as e:
                 util_logger.error("Failed to start Playwright or launch browser: %s", e)
                 raise
@@ -27,10 +29,29 @@ class WebFetcher:
             try:
                 self.browser = await self.playwright.firefox.launch(headless=False)
                 util_logger.info("Browser reconnected successfully.")
+                await self.start_context()
             except Exception as e:
                 util_logger.error("Failed to reconnect the browser: %s", e)
                 raise
+        
 
+    async def start_context(self):
+        """Initialize Playwright and the browser instance."""
+        if not self.context:
+            util_logger.info("Starting Playwright and launching Firefox browser.")
+            try:
+                self.context = await self.browser.new_context(
+                    ignore_https_errors=True,
+                    viewport={"width": 800, "height": 600}, 
+                    user_agent=(
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/115.0.0.0 Safari/537.36"
+                    )  # Modern Chrome on Windows 10
+                )
+            except Exception as e:
+                util_logger.error("Failed to start context: %s", e)
+        
     async def stop_playwright(self):
         """Stop the Playwright instance and close the browser."""
         if self.browser:
@@ -64,54 +85,52 @@ class WebFetcher:
             return await self.fetch_html(url)
 
     async def fetch_html(self, url):
-        """Fetch HTML content using Playwright with pause for debugging."""
+        """Fetch HTML content using Playwright with improved timeout handling."""
         util_logger.info("Fetching HTML content for URL: %s", url)
-        # Start Playwright if it's not already running
         await self.start_playwright()
 
-        # Open a new page
         try:
-            page: Page = await self.browser.new_page()
+            page: Page = await self.context.new_page()
             util_logger.info("New page opened for URL: %s", url)
         except Exception as e:
             util_logger.error("Failed to open a new page for URL: %s. Error: %s", url, e)
             return None, None
 
         try:
-            # Attempt to navigate to the URL
             util_logger.info("Navigating to URL: %s", url)
             await page.goto(url, wait_until='networkidle', timeout=self.webpage_timeout)
             util_logger.info("Navigation to URL %s successful.", url)
+        except TimeoutError:
+            util_logger.warning("Navigation to URL %s timed out after %d ms.", url, self.webpage_timeout)
         except Exception as e:
-            # Handle navigation errors and retry once
-            util_logger.error("Initial navigation failed for URL: %s. Error: %s", url, e)
+            util_logger.error("Failed to navigate to URL: %s. Error: %s", url, e)
             await page.close()
-            try:
-                util_logger.info("Retrying navigation for URL: %s", url)
-                page = await self.browser.new_page()
-                await page.goto(url, wait_until='networkidle', timeout=self.webpage_timeout)
-                util_logger.info("Retry navigation to URL %s successful.", url)
-            except Exception as e:
-                util_logger.error("Retry navigation failed for URL: %s. Error: %s", url, e)
+            return None, None
 
         try:
-            # Additional wait to ensure content is fully loaded
-            util_logger.info("Waiting for network idle state for URL: %s", url)
-            await page.wait_for_load_state('load', timeout=self.webpage_timeout / 4)
-            
-            # After resuming, retrieve the page content
+            # Scroll down until all content is loaded
+            previous_height = await page.evaluate("document.body.scrollHeight")
+            while True:
+                await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                await page.wait_for_timeout(1000)  # Give the page time to load more data
+                new_height = await page.evaluate("document.body.scrollHeight")
+                if new_height == previous_height:
+                    break
+                previous_height = new_height
+        except Exception as e:
+            util_logger.error("Error during wait for load state for URL: %s. Error: %s", url, e)
+            await page.close()
+            return None, None
+
+        try:
             html_content = await page.content()
             final_url = page.url
             util_logger.info("Successfully retrieved HTML content for URL: %s", final_url)
-
-            # Optionally, capture a screenshot for verification
-            # await page.screenshot(path="screenshot.png")
         except Exception as e:
             util_logger.error("Error retrieving content for URL: %s. Error: %s", url, e)
             html_content = None
             final_url = page.url if page else None
         finally:
-            # Ensure the page is closed to free resources
             if not page.is_closed():
                 await page.close()
                 util_logger.info("Page closed for URL: %s", url)

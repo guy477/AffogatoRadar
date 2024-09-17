@@ -17,14 +17,14 @@ class LLMHandler:
         util_logger.info(f"Starting extract_scraped_items with content_type: {content_type}.")
         try:
             if content_type == 'pdf':
-                prompt = PROMPT_HTML_EXTRACT.format("PDF content")  # Meta data instead of actual content
+                prompt = PROMPT_HTML_EXTRACT.format(content)  # Meta data instead of actual content
                 util_logger.debug("Using PDF extraction prompt.")
             else:
-                prompt = PROMPT_HTML_EXTRACT.format("HTML content")  # Meta data instead of actual content
+                prompt = PROMPT_HTML_EXTRACT.format(content)  # Meta data instead of actual content
                 util_logger.debug("Using HTML extraction prompt.")
             
             messages = [{"role": "user", "content": prompt}]  # Meta data
-            util_logger.debug("Prepared messages for LLM chat.")
+            util_logger.info(f"Prepared messages for LLM chat. {messages}")
             
             responses = await self.llm.chat(messages, n=1)
             util_logger.info(f"Received {len(responses)} response(s) from LLM.")
@@ -34,6 +34,7 @@ class LLMHandler:
                 util_logger.warning("No responses received from LLM.")
             
             response = self.clean_response(response)
+
             scraped_items = self.parse_menu_output(response)
             util_logger.info("Finished extracting scraped items.")
             return scraped_items
@@ -104,8 +105,8 @@ class LLMHandler:
             if keyword_embeddings is None:
                 util_logger.error("Failed to retrieve embeddings for target keywords.")
                 return []
-
-            for url in urls:
+            
+            async for url in tqdm(urls, desc="Fetching URL segment embeddings (This may take a while [OPTIMIZE])...."):
                 util_logger.debug(f"Processing URL: {url}")
 
                 # Extract meaningful segments from the URL
@@ -127,7 +128,7 @@ class LLMHandler:
                     util_logger.warning(f"No valid segments found for URL: {url}. Assigning similarity 0.")
                     relevant_urls.append((url, 0))
                     continue
-
+                
                 # Get embeddings for URL segments
                 segment_embeddings = await self.get_embeddings(segments)
                 if segment_embeddings is None:
