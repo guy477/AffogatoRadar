@@ -8,13 +8,13 @@ import aiohttp
 import pandas as pd
 import sqlite3, json
 from tqdm.asyncio import tqdm
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse, urlunparse, urlencode, parse_qsl, urljoin, urlsplit
 from datetime import datetime, timezone
 from sklearn.metrics.pairwise import cosine_similarity
 from collections import defaultdict, OrderedDict
 from bs4 import BeautifulSoup, Comment
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 
 import logging
 from logging.handlers import RotatingFileHandler
@@ -94,3 +94,19 @@ def HAS_CYCLE(path: str, max_cycle_length: int = 10) -> bool:
             seen[window] = True
 
     return False
+
+def NORMALIZE_URL(url: str) -> str:
+    """
+    Normalize a URL by removing default ports, sorting query parameters, and 
+    removing fragments.
+    """
+    parsed = urlparse(url)
+    scheme = parsed.scheme.lower()
+    netloc = parsed.hostname.lower()
+    if parsed.port:
+        netloc += f":{parsed.port}"
+
+    path = parsed.path or '/'
+    query = urlencode(sorted(parse_qsl(parsed.query)))
+    normalized = urlunparse((scheme, netloc, path, '', query, ''))
+    return normalized

@@ -10,7 +10,8 @@ TARGET_URL_KEYWORDS: When crawling, the domain path is passed through an embeddi
 MAX_CONCURRENCY: How many browser/page instances to use at once. Be reasonable.
 WEBPAGE_TIMEOUT: How long to wait in milliseconds for a webpage to load before throwing timeout error.
 
-USE_CACHE: Needs to be updated - will ignore loading from cache when False; Will load from cache when True.
+USE_GET_CACHE: Will load from cache when True.
+USE_SET_CACHE: Will save to cache when True.
 
 PROMPT_HTML_EXTRACT: The `{{}}` sequence will be replaced with the scraped HTML of each traversed page. Currently returns an itemized list - should be easy to modify and adapt to differnet use cases.
 
@@ -37,7 +38,7 @@ SEARCH_REQUEST = f"ukrainian food"
 ESTABLISHMENT_TYPE = "food,restaurant,bar"
 
 TARGET_ATTRIBUTES = { # The attributes of the dish you're interested in.
-    "name": ["borscht"],  # Full, common names of the menu item
+    "name": ["borscht", "borsh"],  # Full, common names of the menu item
     "ingredient_1": ["pork", "chicken", "beef"],  # Single word ingredients
     "ingredient_2": ["beet", "cabbage"],
     "ingredient_3": ["potato", "carrot", "onion"],
@@ -62,7 +63,8 @@ TARGET_ATTRIBUTES = { # The attributes of the dish you're interested in.
 
 # <------------------------------------------------------------------------>
 
-USE_CACHE = False
+USE_GET_CACHE = True
+USE_SET_CACHE = True
 
 TARGET_URL_KEYWORDS = [
                 'menu', 'food', 'drink', 'bar', 'lunch', 'dinner', 'brunch', 'dessert', 'breakfast', 'nutrition', 'ingredients',
@@ -71,31 +73,34 @@ TARGET_URL_KEYWORDS = [
                 'buffet'
             ]
 
-PROMPT_HTML_EXTRACT = f"""Given the HTML content of a restaurant's webpage, extract the menu items in a structured format as follows:
-- Each line should represent one menu item.
-- Item name and ingredients should be separated by a colon (:).
-- Ingredients should be separated by vertical bars (|).
-- If there are no ingredients, use 'N/A' after the colon.
-- Omit any numbers, special characters, or punctuation.
-- Omit any prices, calories, descriptions.
-- Maintain the exact formatting shown in the example.
+PROMPT_HTML_EXTRACT = f"""You're tasked with extracting structured menu items from a restaurant's unstructured webpage text. Please follow these steps carefully:
 
-Example format:
-```output
-Item Name:Ingredient|Ingredient
-Item Name with No Ingredients:N/A
-```
+1. **Menu Item Formatting**: Each line represents one menu item. The format is:
+    - Item name, followed by a colon (:).
+    - Ingredients, separated by vertical bars (|). 
+    - If no ingredients are listed, use 'N/A'.
+  
+2. **Text Cleaning**:
+    - Omit any numbers, special characters, or punctuation.
+    - Ignore prices, calories, or descriptions.
+  
+3. **Return Structure**:
+    - If no items are found, return: `No menu items found`.
+    - If only one item is found, format it as described.
 
-Important:
-- Adhere strictly to the format.
-- If no items are found, return only "No menu items found."
-- If only one item is found, return it in the format shown.
-- DO NOT HALLUCINATE OR MAKE UP ITEMS.
+4. **Examples**:
+    ```output
+    Item Name:Ingredient|Ingredient
+    Item with No Ingredients:N/A
+    ```
 
-Now, extract the menu items from the following HTML:
+Please ensure that items are copied exactly as seen in the text, with special characters removed. Double-check your work for accuracy.
 ```
 {{}}
 ```"""
+
+
+PROMPT_PDF_EXTRACT = PROMPT_HTML_EXTRACT  # If you want to use a different prompt for PDF extraction, change this.
 
 TARGET_THRESHOLDS = {
     "STRICT": 0.80,  # Very likely to be a chicken parmesan

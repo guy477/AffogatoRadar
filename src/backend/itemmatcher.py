@@ -1,6 +1,7 @@
 from _utils._util import *
-from web.cachemanager import CacheManager
-from .llm import *
+from _utils._llm import *
+
+from backend.cachemanager import CacheManager
 
 class ItemMatcher:
     def __init__(self, target_attributes, attribute_weights=None):
@@ -118,17 +119,10 @@ class ItemMatcher:
             UTIL_LOGGER.error(f"Error calculating cosine similarity: {e}")
             return 0.0
 
-    async def calculate_attribute_similarity(self, scraped_item_ingredients):
+    async def calculate_attribute_similarity(self, scraped_item_ingredients, scraped_embeddings):
         UTIL_LOGGER.debug("Calculating attribute similarity.")
         scraped_item_ngrams = self.get_ngrams(scraped_item_ingredients)
         UTIL_LOGGER.debug(f"Generated {len(scraped_item_ngrams)} n-grams from scraped item ingredients.")
-
-        try:
-            scraped_item_embeddings = await self.get_phrase_embeddings(scraped_item_ngrams)
-            UTIL_LOGGER.debug("Obtained embeddings for scraped item n-grams.")
-        except Exception as e:
-            UTIL_LOGGER.error(f"Failed to get embeddings for scraped item: {e}")
-            raise e
 
         attribute_similarity_scores = {}
         UTIL_LOGGER.debug(f"Calculating similarity scores for {len(self.target_attributes)} attributes.")
@@ -145,7 +139,11 @@ class ItemMatcher:
                     UTIL_LOGGER.warning(f"Embedding for phrase '{phrase_lower}' not found.")
                     continue
 
-                for ngram, ngram_embedding in scraped_item_embeddings.items():
+                for ngram in scraped_item_ngrams:
+                    ngram_embedding = scraped_embeddings.get(ngram)
+                    if ngram_embedding is None:
+                        UTIL_LOGGER.warning(f"Embedding for n-gram '{ngram}' not found.")
+                        continue
                     similarity = self.cosine_sim(ngram_embedding, phrase_embedding)
                     if similarity > max_similarity:
                         max_similarity = similarity
@@ -155,21 +153,16 @@ class ItemMatcher:
         UTIL_LOGGER.debug("Completed attribute similarity calculations.")
         return attribute_similarity_scores
 
-    async def calculate_target_similarity(self, scraped_item_name):
+    async def calculate_target_similarity(self, scraped_item_name, scraped_embeddings):
         UTIL_LOGGER.debug("Calculating target similarity based on item name.")
         normalized_name = scraped_item_name.lower().strip()
         if not normalized_name:
             UTIL_LOGGER.warning("Scraped item name is empty after normalization. Returning similarity score 0.0.")
             return 0.0
-        try:
-            scraped_item_embedding = (await self.get_phrase_embeddings([normalized_name]))[normalized_name]
-            UTIL_LOGGER.debug(f"Obtained embedding for scraped item name '{normalized_name}'.")
-        except KeyError:
+        scraped_item_embedding = scraped_embeddings.get(normalized_name)
+        if scraped_item_embedding is None:
             UTIL_LOGGER.error(f"Embedding for scraped item name '{normalized_name}' not found.")
             return 0.0
-        except Exception as e:
-            UTIL_LOGGER.error(f"Failed to get embedding for scraped item name '{scraped_item_name}': {e}")
-            raise e
 
         max_similarity = 0
         for name in self.target_attributes.get('name', []):
@@ -187,10 +180,11 @@ class ItemMatcher:
         UTIL_LOGGER.debug(f"Target similarity score: {max_similarity:.4f}")
         return max_similarity
 
-    async def hybrid_similarity(self, scraped_item_name, scraped_item_ingredients, attribute_threshold=0.0, name_similarity_weight=0.5):
+    async def hybrid_similarity(self, scraped_item_name, scraped_item_ingredients, scraped_embeddings, attribute_threshold=0.0, name_similarity_weight=0.5):
         UTIL_LOGGER.info(f"Calculating hybrid similarity for item '{scraped_item_name}'.")
+
         try:
-            attribute_similarity_scores = await self.calculate_attribute_similarity(scraped_item_ingredients)
+            attribute_similarity_scores = await self.calculate_attribute_similarity(scraped_item_ingredients, scraped_embeddings)
             UTIL_LOGGER.debug(f"Attribute similarity scores: {attribute_similarity_scores}")
         except Exception as e:
             UTIL_LOGGER.error(f"Error calculating attribute similarity: {e}")
@@ -218,7 +212,7 @@ class ItemMatcher:
 
         # Calculate target similarity
         try:
-            target_similarity_score = await self.calculate_target_similarity(scraped_item_name)
+            target_similarity_score = await self.calculate_target_similarity(scraped_item_name, scraped_embeddings)
             UTIL_LOGGER.debug(f"Target similarity score: {target_similarity_score:.4f}")
         except Exception as e:
             UTIL_LOGGER.error(f"Error calculating target similarity: {e}")
@@ -239,19 +233,50 @@ class ItemMatcher:
         UTIL_LOGGER.info(f"Starting hybrid similarity tests for {len(scraped_items)} scraped items.")
         results = []
         try:
-            async for item in tqdm(scraped_items.items(), desc='Calculating scraped_item Embeddings (this can take a while)....'):
-                item_name, item_ingredients = item
-                try:
-                    combined_score, attribute_scores = await self.hybrid_similarity(item_name, item_ingredients)
-                    results.append({
-                        'scraped_item': item_name,
-                        'ingredients': item_ingredients,
-                        'combined_score': combined_score,
-                        'attribute_scores': attribute_scores
-                    })
-                    UTIL_LOGGER.debug(f"Processed item '{item_name}' with combined score {combined_score:.4f}.")
-                except Exception as e:
-                    UTIL_LOGGER.error(f"Failed to process item '{item_name}': {e}")
+            # Collect all unique phrases from scraped_items
+            all_phrases = set()
+            for item_name, item_ingredients in scraped_items.items():
+                normalized_name = item_name.lower().strip()
+                if normalized_name:
+                    all_phrases.add(normalized_name)
+                else:
+                    UTIL_LOGGER.warning("Encountered empty item name after normalization. Skipping.")
+                ngrams = self.get_ngrams(item_ingredients)
+                all_phrases.update(ngram for ngram in ngrams if ngram)
+
+            UTIL_LOGGER.debug(f"Total unique phrases to fetch embeddings for: {len(all_phrases)}")
+
+            # Fetch all embeddings in a single batch
+            scraped_embeddings = await self.get_phrase_embeddings(list(all_phrases))
+            UTIL_LOGGER.debug(f"Fetched embeddings for all scraped items.")
+
+            # Process each item using the fetched embeddings
+            tasks = []
+            for item_name, item_ingredients in scraped_items.items():
+                task = self.hybrid_similarity(
+                    item_name,
+                    item_ingredients,
+                    scraped_embeddings
+                )
+                tasks.append(task)
+
+            # Gather all results concurrently
+            hybrid_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Iterate over results and handle exceptions
+            for (item_name, item_ingredients), result in zip(scraped_items.items(), hybrid_results):
+                if isinstance(result, Exception):
+                    UTIL_LOGGER.error(f"Failed to process item '{item_name}': {result}")
+                    continue
+                combined_score, attribute_scores = result
+                results.append({
+                    'scraped_item': item_name,
+                    'ingredients': item_ingredients,
+                    'combined_score': combined_score,
+                    'attribute_scores': attribute_scores
+                })
+                UTIL_LOGGER.debug(f"Processed item '{item_name}' with combined score {combined_score:.4f}.")
+
         except Exception as e:
             UTIL_LOGGER.error(f"Error during hybrid similarity tests: {e}")
             raise e

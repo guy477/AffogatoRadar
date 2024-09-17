@@ -1,11 +1,13 @@
 # webscraper.py
 from _utils._util import *
 
-from .webfetcher import WebFetcher
 from .contentparser import ContentParser
+from .webinterpreter import WebInterpreter
+
+from backend.cachemanager import CacheManager
 from backend.llmhandler import LLMHandler
-from web.cachemanager import CacheManager
-from .traversalmanager import TraversalManager
+from backend.webfetcher import WebFetcher
+
 
 from urllib.robotparser import RobotFileParser
 
@@ -25,7 +27,7 @@ class WebScraper:
         self.content_parser = ContentParser()
         self.cache_manager = CacheManager()
         self.llm_handler = LLMHandler()
-        self.traversal_manager = TraversalManager(
+        self.web_interpreter = WebInterpreter(
             similarity_threshold=self.similarity_threshold,
             max_concurrency=self.max_concurrency,
             scraper=self,
@@ -36,52 +38,59 @@ class WebScraper:
         
         UTIL_LOGGER.info("WebScraper initialized successfully.")
 
-    async def fetch_and_cache_content(self, url):
+    async def fetch_and_cache_content(self, url: str) -> Optional[Tuple[str, Optional[str], Optional[bytes]]]:
         UTIL_LOGGER.info("Fetching and caching contents for URL: %s", url)
 
+        normalized_url = NORMALIZE_URL(url)
         # Check robots.txt compliance
-        if not await self.is_compliant(url):
-            UTIL_LOGGER.info(f"URL disallowed by robots.txt: {url}. Skipping.")
-            return None, None
-        
+        if not await self.is_compliant(normalized_url):
+            UTIL_LOGGER.info(f"URL disallowed by robots.txt: {normalized_url}. Skipping.")
+            return None, None, None
+
         # Check cache first
-        redirect_url = self.cache_manager.get_cached_data('source_dest', url)
-        if redirect_url:
-            UTIL_LOGGER.debug("Cache hit for URL: %s, redirecting to: %s", url, redirect_url)
-            content = self.cache_manager.get_cached_data('url_to_page_data', redirect_url)
-            if content:
-                UTIL_LOGGER.debug("Content retrieved from cache for URL: %s", redirect_url)
-                return redirect_url, content
+        normalized_final_url = self.cache_manager.get_cached_data('source_dest', normalized_url)
+        if normalized_final_url:
+            UTIL_LOGGER.debug("Cache hit for URL: %s, redirecting to: %s", normalized_url, normalized_final_url)
+            html_content = self.cache_manager.get_cached_data('url_to_html_data', normalized_final_url)
+            pdf_content = self.cache_manager.get_cached_data('url_to_pdf_data', normalized_final_url)
+            if html_content or pdf_content:
+                UTIL_LOGGER.debug("Content retrieved from cache for URL: %s", normalized_final_url)
+                return normalized_final_url, html_content, pdf_content
             else:
-                UTIL_LOGGER.warning("Redirect URL found in cache but no content cached for: %s", redirect_url)
-        
+                UTIL_LOGGER.warning("Redirect URL found in cache but no content cached for: %s", normalized_final_url)
+
         # Fetch content
-        UTIL_LOGGER.debug("Cache miss for URL: %s. Fetching content.", url)
+        UTIL_LOGGER.debug("Cache miss for URL: %s. Fetching content.", normalized_url)
         try:
-            final_url, content = await self.web_fetcher.fetch_content(url)
-            if not content:
-                UTIL_LOGGER.error("Failed to fetch content for URL: %s", url)
-                return None, None
+            final_url, html_content, pdf_content = await self.web_fetcher.fetch_content(url)
+            if not html_content and not pdf_content:
+                UTIL_LOGGER.error("Failed to fetch content for URL: %s", normalized_url)
+                return None, None, None
             UTIL_LOGGER.debug("Content fetched successfully for URL: %s", final_url)
         except Exception as e:
-            UTIL_LOGGER.error("Exception occurred while fetching content for URL: %s. Error: %s", url, str(e))
-            return None, None
+            UTIL_LOGGER.error("Exception occurred while fetching content for URL: %s. Error: %s", normalized_url, str(e))
+            return None, None, None
+
+        # Normalize final URL (variable defined above)
+        normalized_final_url = NORMALIZE_URL(final_url)
 
         # Cache the final page content
         try:
-
-            self.cache_manager.set_cached_data('source_dest', url, final_url)
-            self.cache_manager.set_cached_data('url_to_page_data', final_url, content)
-            UTIL_LOGGER.info("Content cached for URL: %s", url)
+            self.cache_manager.set_cached_data('source_dest', normalized_url, normalized_final_url)
+            if html_content:
+                self.cache_manager.set_cached_data('url_to_html_data', normalized_final_url, html_content)
+            if pdf_content:
+                self.cache_manager.set_cached_data('url_to_pdf_data', normalized_final_url, pdf_content)
+            UTIL_LOGGER.info("Content cached for URL: %s", normalized_final_url)
         except Exception as e:
-            UTIL_LOGGER.error("Failed to cache content for URL: %s. Error: %s", url, str(e))
+            UTIL_LOGGER.error("Failed to cache content for URL: %s. Error: %s", normalized_final_url, str(e))
 
-        return final_url, content
+        return final_url, html_content, pdf_content
 
     async def source_establishment_url(self, google_maps_url):
         UTIL_LOGGER.info("Retrieving menu link from Google Maps URL: %s", google_maps_url)
         
-        final_url, html_content = await self.fetch_and_cache_content(google_maps_url)
+        final_url, html_content, _ = await self.fetch_and_cache_content(google_maps_url)
         if not html_content:
             UTIL_LOGGER.warning("No HTML content found for Google Maps URL: %s", google_maps_url)
             return None
@@ -218,12 +227,13 @@ class WebScraper:
     async def url_embedding_relevance(self, full_urls):
         UTIL_LOGGER.info("Evaluating embedding relevance for %d URLs.", len(full_urls))
         relevant_urls = []
+        normalized_urls = [NORMALIZE_URL(url) for url in full_urls]
         try:
             UTIL_LOGGER.debug("Checking cache for embedding relevance.")
-            # Retrieve cached relevance
+            # Retrieve cached relevance using normalized URLs
             cached_data = {
                 url: self.cache_manager.get_cached_data('embedding_relevance', url)
-                for url in full_urls
+                for url in normalized_urls
             }
             # Separate cached and uncached URLs
             cached_urls = [(url, relevance) for url, relevance in cached_data.items() if relevance is not None]

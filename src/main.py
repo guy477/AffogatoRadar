@@ -1,7 +1,8 @@
 # main.py
 
 from _utils._util import *
-from backend import itemmatcher, placeslocator, webnode
+from _utils import _webnode
+from backend import itemmatcher, placeslocator
 from web import webscraper, webcrawler
 import pandas as pd
 
@@ -10,7 +11,7 @@ async def load_old_trees(filepath='../data/_trees/trees.json'):
     try:
         with open(filepath, 'r') as f:
             tree_data = json.load(f)
-            old_trees = {key: webnode.WebNode.from_dict(value) for key, value in tree_data.items()}
+            old_trees = {key: _webnode.WebNode.from_dict(value) for key, value in tree_data.items()}
             UTIL_LOGGER.info(f"Loaded {len(old_trees)} existing trees.")
             return old_trees
     except FileNotFoundError:
@@ -70,7 +71,7 @@ async def process_establishment(
     scraper: webscraper.WebScraper,
     crawler: webcrawler.WebCrawler,
     scraped_item_matcher: itemmatcher.ItemMatcher,
-    trees: Dict[str, webnode.WebNode],
+    trees: Dict[str, _webnode.WebNode],
     aggregated_results: list,
     address: str,
     keyword: str,
@@ -85,14 +86,14 @@ async def process_establishment(
         UTIL_LOGGER.info(
             f"Found establishment link for {establishment['name']}: {website_link}"
         )
-        new_link = await scraper.source_establishment_url(website_link)
+        establishment_url = await scraper.source_establishment_url(website_link)
 
-        if new_link:
-            UTIL_LOGGER.info(f"Crawling and building tree from link: {new_link}")
-            tree = await crawler.start_crawling(new_link, d_limit=3)
+        if establishment_url:
+            UTIL_LOGGER.info(f"Crawling and building tree from link: {establishment_url}")
+            tree = await crawler.start_crawling(establishment_url, d_limit=3)
 
             UTIL_LOGGER.info("Parsing tree...")
-            tree = await scraper.traversal_manager.start_dfs(tree)
+            tree = await scraper.web_interpreter.start_dfs(tree)
 
             if tree and len(tree.menu_book) > 0:
                 UTIL_LOGGER.debug(f"Menu items found: {len(tree.menu_book)}")
@@ -101,7 +102,7 @@ async def process_establishment(
                 for result in results:
                     aggregated_results.append({
                         'keyword': (address, keyword, lookup_radius),
-                        'place_id': place_id,
+                        'establishment_url': establishment_url,
                         'scraped_item': result.get('scraped_item'),
                         'ingredients': ', '.join(result.get('ingredients', [])),
                         'combined_score': result.get('combined_score'),
@@ -139,15 +140,15 @@ async def build_and_parse_tree(
     address: str,
     establishment_type: str,
     lookup_radius: int,
-    old_trees: Dict[str, webnode.WebNode]
-) -> Dict[str, webnode.WebNode]:
+    old_trees: Dict[str, _webnode.WebNode]
+) -> Dict[str, _webnode.WebNode]:
     """Build and parse trees."""
     # Initialize components
     place_locator, scraper, crawler, scraped_item_matcher = initialize_components()
 
     await scraped_item_matcher.precompute_attribute_embeddings()
 
-    trees: Dict[str, webnode.WebNode] = {}
+    trees: Dict[str, _webnode.WebNode] = {}
     aggregated_results: list = []
 
     UTIL_LOGGER.debug(f"Processing keyword: {keyword}")

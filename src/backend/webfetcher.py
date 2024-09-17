@@ -1,4 +1,5 @@
 # webfetcher.py
+
 from _utils._util import *
 
 from playwright.async_api import async_playwright, Page, TimeoutError
@@ -17,7 +18,10 @@ class WebFetcher:
             UTIL_LOGGER.info("Starting Playwright and launching Firefox browser.")
             try:
                 self.playwright = await async_playwright().start()
-                self.browser = await self.playwright.firefox.launch(headless=False)
+                self.browser = await self.playwright.chromium.launch(
+                        headless=True,
+                        # args=['--disable-blink-features=AutomationControlled'])
+                    )
                 UTIL_LOGGER.info("Playwright started and Firefox browser launched.")
                 await self.start_context()
             except Exception as e:
@@ -124,6 +128,7 @@ class WebFetcher:
 
         try:
             html_content = await page.content()
+            pdf_content = await page.pdf()
             final_url = page.url
             UTIL_LOGGER.info("Successfully retrieved HTML content for URL: %s", final_url)
         except Exception as e:
@@ -135,7 +140,7 @@ class WebFetcher:
                 await page.close()
                 UTIL_LOGGER.info("Page closed for URL: %s", url)
 
-        return final_url, html_content
+        return final_url, html_content, pdf_content
 
     async def fetch_pdf(self, url):
         """Fetch PDF content from a URL."""
@@ -158,7 +163,7 @@ class WebFetcher:
                         pdf_data = await response.read()
                         UTIL_LOGGER.info("Successfully downloaded PDF from URL: %s", url)
                         UTIL_LOGGER.info("PDF size for URL %s: %d bytes", url, len(pdf_data))
-                        return url, pdf_data
+                        return url, None, pdf_data
                     else:
                         UTIL_LOGGER.warning(
                             "Failed to fetch PDF from URL: %s. Status: %d, Reason: %s",
@@ -166,7 +171,7 @@ class WebFetcher:
                             response.status,
                             response.reason
                         )
-                        return None, None
+                        return None, None, None
             except Exception as e:
                 UTIL_LOGGER.error("An error occurred while fetching the PDF from URL: %s. Error: %s", url, e)
-                return None, None
+                return None, None, None

@@ -1,6 +1,6 @@
 # contentparser.py
 from _utils._util import *
-import re
+
 from io import BytesIO
 import pdfplumber
 
@@ -55,7 +55,7 @@ class ContentParser:
             UTIL_LOGGER.info("Completed PDF parsing.")
             return text
         except Exception as e:
-            UTIL_LOGGER.error(f"Error while parsing PDF: {e}")
+            UTIL_LOGGER.error(f"Error while parsing PDF: {e};\n{pdf_bytes[:1000]}")
             raise
 
     def filter_html_for_menu(self, html):
@@ -63,10 +63,9 @@ class ContentParser:
         UTIL_LOGGER.debug("Starting HTML filtering for menu items.")
         try:
             soup = BeautifulSoup(html, 'html.parser')
-            body = soup.body or soup
-            if body:
+            if soup:
                 # Extract text content while preserving the text between tags
-                filtered_text = body.get_text(separator=' ', strip=True)
+                filtered_text = soup.get_text(separator=' ', strip=True)
                 UTIL_LOGGER.info("HTML content filtered successfully.")
                 return filtered_text
             else:

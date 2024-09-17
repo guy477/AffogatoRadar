@@ -1,9 +1,8 @@
-# traversalmanager.py
+# WebInterpreter.py
 from _utils._util import *
 
-from web.cachemanager import CacheManager
 
-class TraversalManager:
+class WebInterpreter:
     def __init__(self, similarity_threshold=0.6, max_concurrency=10, scraper=None, llm_handler=None, cache_manager=None, content_parser=None):
         self.similarity_threshold = similarity_threshold
         self.semaphore = asyncio.Semaphore(max_concurrency)
@@ -17,7 +16,7 @@ class TraversalManager:
         self.content_parser = content_parser
 
         UTIL_LOGGER.info(
-            "TraversalManager initialized with similarity_threshold=%.2f, max_concurrency=%d",
+            "WebInterpreter initialized with similarity_threshold=%.2f, max_concurrency=%d",
             self.similarity_threshold,
             max_concurrency
         )
@@ -36,6 +35,8 @@ class TraversalManager:
     async def process_dfs_node(self, node, parent):
         UTIL_LOGGER.info("Processing DFS node: %s", node.url)
         
+        filtered_content = None
+
         semaphored = 0
         async with self.node_lock:
             cached_scraped_items = self.cache_manager.get_cached_data('url_to_itemize', node.url)
@@ -55,19 +56,27 @@ class TraversalManager:
             async with self.semaphore:
                 try:
                     content_type = 'pdf' if self.scraper.web_fetcher.is_pdf_url(node.url) else 'html'
-                    UTIL_LOGGER.info("Fetching content for URL: %s as %s", node.url, content_type)
-                    final_url, content = await self.scraper.fetch_and_cache_content(node.url)
                     
-                    if not content:
+                    UTIL_LOGGER.info("Fetching content for URL: %s as %s", node.url, content_type)
+                    final_url, html_content, pdf_content = await self.scraper.fetch_and_cache_content(node.url)
+                    
+                    if not html_content and not pdf_content:
                         UTIL_LOGGER.warning("No content fetched for URL: %s", node.url)
                         return
 
-                    UTIL_LOGGER.info("Content fetched for URL: %s, size: %d bytes", node.url, len(content))
+                    UTIL_LOGGER.info("Content fetched for URL: %s, size: ~%d bytes total.", node.url, len(html_content) + len(pdf_content))
                     
-                    filtered_content = self.content_parser.parse_content(content, content_type)
-                    UTIL_LOGGER.info("Content parsed for URL: %s", node.url)
+                    if content_type == 'html':
+                        # Try loading html content first
+                        filtered_content = self.content_parser.parse_content(html_content, 'html')
+                        scraped_items = await self.llm_handler.extract_scraped_items(filtered_content, content_type)
                     
-                    scraped_items = await self.llm_handler.extract_scraped_items(filtered_content, content_type)
+                    if content_type == 'pdf' or not scraped_items:
+                        # If no scraped items from html, try loading pdf content (or if pdf is the only content type)
+                        filtered_content = self.content_parser.parse_content(pdf_content, 'pdf')
+                        scraped_items = await self.llm_handler.extract_scraped_items(filtered_content, content_type)
+                    
+                    
 
                     node.scraped_items = scraped_items
                     semaphored = 1

@@ -1,6 +1,9 @@
 # cachemanager.py
-from backend.localstorage import LocalStorage
-from _utils._util import *  # Assuming logging is imported through _utils
+
+from _utils._util import *
+
+from _utils._localstorage import LocalStorage
+
 
 class CacheManager:
     def __init__(self):
@@ -9,8 +12,7 @@ class CacheManager:
         UTIL_LOGGER.info("CacheManager initialized successfully.")
 
     def _get_storage(self, storage_name):
-        if not USE_CACHE:
-            return None
+
         try:
             if storage_name not in self.storages:
                 UTIL_LOGGER.debug(f"Initializing new LocalStorage for '{storage_name}'")
@@ -22,7 +24,10 @@ class CacheManager:
 
     def get_cached_data(self, storage_name, key):
         UTIL_LOGGER.debug(f"Attempting to retrieve data from '{storage_name}' with key: {key}")
-
+        if not USE_GET_CACHE:
+            UTIL_LOGGER.debug(f"Cache setting is disabled. Returning None for key: {key}")
+            return None
+        
         try:
             storage = self._get_storage(storage_name)
             if storage is None:
@@ -42,6 +47,10 @@ class CacheManager:
 
     def set_cached_data(self, storage_name, key, value):
         UTIL_LOGGER.info(f"Attempting to set data in '{storage_name}' with key: {key}")
+        if not USE_SET_CACHE:
+            UTIL_LOGGER.debug(f"Cache setting is disabled. Returning None for key: {key}")
+            return None
+        
         try:
             storage = self._get_storage(storage_name)
             if storage is None:

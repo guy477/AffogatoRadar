@@ -1,5 +1,6 @@
 from _utils._util import *
-from web.cachemanager import CacheManager
+
+from .cachemanager import CacheManager
 
 import requests
 from geopy.geocoders import Nominatim
