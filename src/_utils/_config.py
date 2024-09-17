@@ -62,7 +62,7 @@ TARGET_ATTRIBUTES = { # The attributes of the dish you're interested in.
 
 # <------------------------------------------------------------------------>
 
-USE_CACHE = True
+USE_CACHE = False
 
 TARGET_URL_KEYWORDS = [
                 'menu', 'food', 'drink', 'bar', 'lunch', 'dinner', 'brunch', 'dessert', 'breakfast', 'nutrition', 'ingredients',

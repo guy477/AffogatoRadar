@@ -2,11 +2,11 @@ import weakref
 import pymysql
 from hashlib import md5
 
-from _utils._util import util_logger
+from _utils._util import UTIL_LOGGER
 
 class CustomDBManager:
     def __init__(self, system, uid, pwd, library, table_name, logg=None) -> None:
-        self.logging = logg if logg else util_logger
+        self.logging = logg if logg else UTIL_LOGGER
 
         # Register the object to execute "_on_delete" upon garbage collection
         self._finalizer = weakref.finalize(self, self._on_delete)

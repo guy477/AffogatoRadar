@@ -8,12 +8,13 @@ import aiohttp
 import pandas as pd
 import sqlite3, json
 from tqdm.asyncio import tqdm
-from typing import List, Optional
 from urllib.parse import urljoin, urlparse
 from datetime import datetime, timezone
 from sklearn.metrics.pairwise import cosine_similarity
 from collections import defaultdict, OrderedDict
 from bs4 import BeautifulSoup, Comment
+
+from typing import List, Optional, Dict, Any
 
 import logging
 from logging.handlers import RotatingFileHandler
@@ -21,8 +22,8 @@ from logging.handlers import RotatingFileHandler
 # --------------------- Logging Configuration ---------------------
 
 # Create a logger for the utilities module
-util_logger = logging.getLogger('log')
-util_logger.setLevel(logging.DEBUG)  # Set to DEBUG to capture all levels
+UTIL_LOGGER = logging.getLogger('log')
+UTIL_LOGGER.setLevel(logging.DEBUG)  # Set to DEBUG to capture all levels
 
 # Define log format
 log_format = logging.Formatter(
@@ -54,15 +55,15 @@ stream_handler.setLevel(logging.ERROR)
 stream_handler.setFormatter(log_format)
 
 # Remove existing handlers and add new ones to ensure log file is overwritten each run
-util_logger.handlers = []
-util_logger.addHandler(file_handler)
-util_logger.addHandler(stream_handler)
+UTIL_LOGGER.handlers = []
+UTIL_LOGGER.addHandler(file_handler)
+UTIL_LOGGER.addHandler(stream_handler)
 
 # Prevent logs from being propagated to the root logger
-util_logger.propagate = False
+UTIL_LOGGER.propagate = False
 
 # --------------------- End of Logging Configuration ---------------------
-def has_cycle(path: str, max_cycle_length: int = 10) -> bool:
+def HAS_CYCLE(path: str, max_cycle_length: int = 10) -> bool:
     """
     Detects if there is a cycle in the given URL path by identifying
     any repeating subsequences of segments.
