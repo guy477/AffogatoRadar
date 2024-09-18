@@ -64,8 +64,6 @@ class WebInterpreter:
                         UTIL_LOGGER.warning("No content fetched for URL: %s", node.url)
                         return
 
-                    UTIL_LOGGER.info("Content fetched for URL: %s, size: ~%d bytes total.", node.url, len(html_content) + len(pdf_content))
-                    
                     if content_type == 'html':
                         # Try loading html content first
                         filtered_content = self.content_parser.parse_content(html_content, 'html')
@@ -76,10 +74,10 @@ class WebInterpreter:
                         filtered_content = self.content_parser.parse_content(pdf_content, 'pdf')
                         scraped_items = await self.llm_handler.extract_scraped_items(filtered_content, content_type)
                     
-                    
-
                     node.scraped_items = scraped_items
-                    semaphored = 1
+                    
+                    # If the llm call returns None, there was an error: do not cache. Otherwise, cache.
+                    semaphored = 1 if scraped_items is not None else 0
                     UTIL_LOGGER.info("Extracted %d scraped items for URL: %s", len(scraped_items), node.url)
                 except Exception as e:
                     UTIL_LOGGER.error("Error processing URL: %s - %s", node.url, str(e))

@@ -10,7 +10,7 @@ class LLM:
     def __init__(self, model_chat: str = "gpt-4o-mini", model_embedding: str = 'text-embedding-3-large', max_tokens: int = 265, temperature: float = 0.7):
         self.model_chat = model_chat
         self.model_embedding = model_embedding
-        self.token_limit = 8191  # token limit for 'text-embedding-3-large'
+        self.token_limit = 4095  # token limit for 'text-embedding-3-large'
         self.encoding = tiktoken.encoding_for_model(model_embedding)
         self.max_tokens = max_tokens
         self.temperature = temperature
@@ -49,7 +49,7 @@ class LLM:
             self.logger.info("Chat API call successful, number of choices returned: %d", len(messages_content))
             return messages_content
         except Exception as e:
-            self.logger.error("Error during chat call: %s", str(e), exc_info=True)
+            self.logger.error("Error during chat call: %s\nmessages: %s", str(e), messages, exc_info=True)
             return None
 
     def _count_tokens(self, text: str) -> int:
@@ -93,7 +93,7 @@ class LLM:
             self.logger.info("get_embeddings completed successfully")
             return np.array(all_embeddings)
         except Exception as e:
-            self.logger.error("Error during embedding call for texts: %s", str(e), exc_info=True)
+            self.logger.error("Error during embedding call for texts: %s\ntext_list: %s", str(e), text_list, exc_info=True)
             return np.array([])
 
     def _create_batches(self, text_list: List[str]) -> List[List[str]]:

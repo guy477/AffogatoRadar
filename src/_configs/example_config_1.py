@@ -25,11 +25,12 @@ USE_SET_CACHE = True  # Enable saving to cache when set to True.
 
 # <-----------------------Location Settings--------------------------------->
 SELECTED_ADDRESS = "Houston, Texas"  # Point of Interest (POI) around which to base your search.
-LOOKUP_RADIUS = 500000  # Radius in feet around the SELECTED_ADDRESS to look for CURATED_PLACES.
+LOOKUP_RADIUS = 16093  # Radius in meters around the SELECTED_ADDRESS to look for CURATED_PLACES.
 
 # <-----------------------Similarity and Timeout Settings-------------------->
 SIMILARITY_THRESHOLD = 0.550  # Ignore any links with embedding cosine similarity less than this (see `TARGET_URL_KEYWORDS`).
 WEBPAGE_TIMEOUT = 10000  # Time in milliseconds to wait for a webpage to load before throwing a timeout error.
+DEPTH_LIMIT = 3  # Depth limit for the crawler.
 
 # <-----------------------Search Parameters--------------------------------->
 SEARCH_REQUEST = "electronics gadgets"  # Search query term.

@@ -5,6 +5,7 @@ import re
 import numpy as np
 import asyncio  # Add asyncio
 import aiohttp
+import requests
 import pandas as pd
 import sqlite3, json
 from tqdm.asyncio import tqdm

@@ -73,12 +73,7 @@ async def process_establishment(
     scraped_item_matcher: itemmatcher.ItemMatcher,
     trees: Dict[str, _webnode.WebNode],
     aggregated_results: list,
-    address: str,
-    keyword: str,
-    establishment_type: str,
-    lookup_radius: int,
-    good_local_trees: int
-) -> int:
+) -> None:
     """Process a single establishment: fetch, crawl, parse, and aggregate results."""
     place_id = establishment['place_id']
     website_link = place_locator.get_google_places_url(place_id)
@@ -91,7 +86,7 @@ async def process_establishment(
 
         if establishment_url:
             UTIL_LOGGER.info(f"Crawling and building tree from link: {establishment_url}")
-            tree = await crawler.start_crawling(establishment_url, d_limit=3)
+            tree = await crawler.start_crawling(establishment_url, d_limit=DEPTH_LIMIT)
 
             UTIL_LOGGER.info("Parsing tree...")
             tree = await scraper.web_interpreter.start_dfs(tree)
@@ -110,16 +105,12 @@ async def process_establishment(
                         'attribute_scores': result.get('attribute_scores')
                     })
 
-                good_local_trees += 1
-
             trees[place_id] = tree
             UTIL_LOGGER.debug(f"Tree constructed and added with place_id: {place_id}")
         else:
             UTIL_LOGGER.warning("No forward link found after scraping.")
     else:
         UTIL_LOGGER.warning("No source link available.")
-
-    return good_local_trees
 
 
 async def save_aggregated_results(aggregated_results: list) -> None:
@@ -155,30 +146,21 @@ async def build_and_parse_tree(
     UTIL_LOGGER.debug(f"Processing keyword: {keyword}")
     try:
         # Search for establishments nearby
-        search_results = await search_establishments(
+        places_results = await search_establishments(
             place_locator, address, keyword, establishment_type, lookup_radius
         )
 
-        if search_results and search_results.get('results'):
-            places_results = list(search_results['results'])
-            good_local_trees = 0
-
-            while places_results and good_local_trees < 2:
-                establishment = places_results.pop(0)
-                good_local_trees = await process_establishment(
-                    establishment,
-                    place_locator,
-                    scraper,
-                    crawler,
-                    scraped_item_matcher,
-                    trees,
-                    aggregated_results,
-                    address,
-                    keyword,
-                    establishment_type,
-                    lookup_radius,
-                    good_local_trees
-                )
+        while places_results:
+            establishment = places_results.pop(0)
+            await process_establishment(
+                establishment,
+                place_locator,
+                scraper,
+                crawler,
+                scraped_item_matcher,
+                trees,
+                aggregated_results,
+            )
         else:
             UTIL_LOGGER.warning(f"No establishment found for keyword: {keyword}.")
     except Exception as e:
@@ -198,7 +180,7 @@ async def main() -> None:
     """Main function to orchestrate tree building and parsing."""
     address: str = SELECTED_ADDRESS  # NOTE: SEE _utils/_config.py
     keyword: str = SEARCH_REQUEST    # NOTE: SEE _utils/_config.py
-    establishment_type: str = ESTABLISHMENT_TYPE  # NOTE: SEE _utils/_config.py
+    establishment_type: str = ESTABLISHMENT_TYPES  # NOTE: SEE _utils/_config.py
 
     # Load existing trees
     old_trees = await load_old_trees()
