@@ -64,7 +64,7 @@ UTIL_LOGGER.addHandler(stream_handler)
 UTIL_LOGGER.propagate = False
 
 # --------------------- End of Logging Configuration ---------------------
-def HAS_CYCLE(path: str, max_cycle_length: int = 10) -> bool:
+def has_cycle(path: str, max_cycle_length: int = 10) -> bool:
     """
     Detects if there is a cycle in the given URL path by identifying
     any repeating subsequences of segments.
@@ -96,7 +96,7 @@ def HAS_CYCLE(path: str, max_cycle_length: int = 10) -> bool:
 
     return False
 
-def NORMALIZE_URL(url: str) -> str:
+def normalize_url(url: str) -> str:
     """
     Normalize a URL by removing default ports, sorting query parameters, and 
     removing fragments.

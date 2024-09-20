@@ -41,7 +41,7 @@ class WebScraper:
     async def fetch_and_cache_content(self, url: str) -> Optional[Tuple[str, Optional[str], Optional[bytes]]]:
         UTIL_LOGGER.info("Fetching and caching contents for URL: %s", url)
 
-        normalized_url = NORMALIZE_URL(url)
+        normalized_url = normalize_url(url)
 
         # Check cache first
         normalized_final_url = self.cache_manager.get_cached_data('source_dest', normalized_url)
@@ -73,7 +73,7 @@ class WebScraper:
             return None, None, None
 
         # Normalize final URL (variable defined above)
-        normalized_final_url = NORMALIZE_URL(final_url)
+        normalized_final_url = normalize_url(final_url)
 
         # Cache the final page content
         try:
@@ -228,7 +228,7 @@ class WebScraper:
     async def url_embedding_relevance(self, full_urls):
         UTIL_LOGGER.info("Evaluating embedding relevance for %d URLs.", len(full_urls))
         relevant_urls = []
-        normalized_urls = [NORMALIZE_URL(url) for url in full_urls]
+        normalized_urls = [normalize_url(url) for url in full_urls]
         try:
             UTIL_LOGGER.debug("Checking cache for embedding relevance.")
             # Retrieve cached relevance using normalized URLs

@@ -20,7 +20,7 @@ class WebCrawler:
         UTIL_LOGGER.info(f"WebCrawler initialized with "
                      f"max_concurrency={max_concurrency}")
 
-    def NORMALIZE_URL(self, url, base_url=None):
+    def normalize_url(self, url, base_url=None):
         """Normalize the URL by joining it with the base and stripping any trailing slashes, queries, and fragments."""
         original_url = url
         url_ = url.strip()
@@ -75,7 +75,7 @@ class WebCrawler:
            return []
 
     async def process_node(self, node, depth, d_limit, queue):
-        normalized_url = self.NORMALIZE_URL(node.url)
+        normalized_url = self.normalize_url(node.url)
         UTIL_LOGGER.info(f"Processing node: {normalized_url} at depth {depth}")
         
         correct_timeout = self.scraper.webpage_timeout * 3 / 1000
@@ -89,7 +89,7 @@ class WebCrawler:
             if not self.scraper.web_fetcher.is_pdf_url(final_url) and html_content:
                 subpage_links = await self.extract_subpage_links(final_url, html_content)
                 for link in subpage_links:
-                    normalized_link = self.NORMALIZE_URL(link, base_url=final_url)
+                    normalized_link = self.normalize_url(link, base_url=final_url)
                     
                     if depth + 1 > d_limit:
                         UTIL_LOGGER.debug(f"Depth limit reached for URL: {normalized_link}")
@@ -101,7 +101,7 @@ class WebCrawler:
 
                     await self.mark_as_visited(normalized_link)
 
-                    if HAS_CYCLE(normalized_link):
+                    if has_cycle(normalized_link):
                         UTIL_LOGGER.warning(f"Cycle detected in URL path: {normalized_link}")
                         continue
 
@@ -117,7 +117,7 @@ class WebCrawler:
     async def crawl(self, root_node, d_limit):
         """Crawl the website using BFS by leveraging the queue."""
         queue = asyncio.Queue()
-        normalized_url = self.NORMALIZE_URL(root_node.url)
+        normalized_url = self.normalize_url(root_node.url)
 
         # Store the root normalized URL for reference
         self.root_normalized_url = normalized_url
@@ -162,7 +162,7 @@ class WebCrawler:
         
         # Clear the visitation set and create the root node
         self.visited_urls.clear()
-        normalized_start_url = self.NORMALIZE_URL(start_url)
+        normalized_start_url = self.normalize_url(start_url)
         self.root_node = WebNode(url=normalized_start_url, descriptor=start_url)
 
         # Store the root normalized URL
