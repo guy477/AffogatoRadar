@@ -18,7 +18,7 @@ Affogato Radar is an intelligent web scraping and crawling tool designed to loca
 - [Learning Experience](#learning-experience)
 - [Potential Repurposing](#potential-repurposing)
 - [Contributing](#contributing)
-- [License](#license)
+- [Comments](#Comments)
 
 ## Features
 
