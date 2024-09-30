@@ -44,15 +44,13 @@ class WebFetcher:
         if not self.context:
             UTIL_LOGGER.info("Starting Playwright and launching Firefox browser.")
             try:
+                headers = get_anonymous_headers()
                 self.context = await self.browser.new_context(
                     ignore_https_errors=True,
-                    viewport={"width": 800, "height": 600}, 
-                    user_agent=(
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) "
-                        "Chrome/115.0.0.0 Safari/537.36"
-                    )  # Modern Chrome on Windows 10
+                    viewport={"width": 800, "height": 600},
+                    extra_http_headers=headers,
                 )
+                UTIL_LOGGER.info("Browser context started successfully with custom headers.")
             except Exception as e:
                 UTIL_LOGGER.error("Failed to start context: %s", e)
         
@@ -145,16 +143,7 @@ class WebFetcher:
     async def fetch_pdf(self, url):
         """Fetch PDF content from a URL."""
         UTIL_LOGGER.info("Fetching PDF content for URL: %s", url)
-        headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/113.0.0.0 Safari/537.36"
-            ),
-            "Accept": "application/pdf,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
-            "Connection": "keep-alive",
-        }
+        headers = get_anonymous_headers()
 
         async with aiohttp.ClientSession(headers=headers) as session:
             try:

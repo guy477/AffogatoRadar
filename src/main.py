@@ -33,8 +33,6 @@ async def save_trees(trees, filepath='../_trees/trees.json'):
     except Exception as e:
         UTIL_LOGGER.error(f"Failed to save trees to {filepath}: {e}")
 
-
-
 def initialize_components() -> tuple:
     """Initialize and return all necessary components."""
     place_locator = placeslocator.PlaceLocator()
@@ -50,7 +48,6 @@ def initialize_components() -> tuple:
     scraped_item_matcher = itemmatcher.ItemMatcher(TARGET_ATTRIBUTES)
     return place_locator, scraper, crawler, scraped_item_matcher
 
-
 async def search_establishments(
     place_locator: placeslocator.PlaceLocator,
     address: str,
@@ -63,7 +60,6 @@ async def search_establishments(
         f"Searching establishments with keyword '{keyword}' around '{address}' within radius {lookup_radius}."
     )
     return place_locator.search_establishments_nearby(address, keyword, establishment_type, lookup_radius)
-
 
 async def process_establishment(
     establishment: Dict[str, Any],
@@ -112,7 +108,6 @@ async def process_establishment(
     else:
         UTIL_LOGGER.warning("No source link available.")
 
-
 async def save_aggregated_results(aggregated_results: list) -> None:
     """Save aggregated results to a CSV file."""
     if aggregated_results:
@@ -126,12 +121,7 @@ async def save_aggregated_results(aggregated_results: list) -> None:
         except Exception as e:
             UTIL_LOGGER.error(f"Failed to save aggregated results to CSV: {e}")
 
-
 async def build_and_parse_tree(
-    keyword: str,
-    address: str,
-    establishment_type: str,
-    lookup_radius: int,
     old_trees: Dict[str, _webnode.WebNode]
 ) -> Dict[str, _webnode.WebNode]:
     """Build and parse trees."""
@@ -143,11 +133,15 @@ async def build_and_parse_tree(
     trees: Dict[str, _webnode.WebNode] = {}
     aggregated_results: list = []
 
-    UTIL_LOGGER.debug(f"Processing keyword: {keyword}")
+    UTIL_LOGGER.debug(f"Processing keyword: {SEARCH_REQUEST}")
     try:
         # Search for establishments nearby
         places_results = await search_establishments(
-            place_locator, address, keyword, establishment_type, lookup_radius
+            place_locator,
+            SELECTED_ADDRESS,
+            SEARCH_REQUEST,
+            ESTABLISHMENT_TYPES,
+            LOOKUP_RADIUS
         )
 
         while places_results:
@@ -162,9 +156,9 @@ async def build_and_parse_tree(
                 aggregated_results,
             )
         else:
-            UTIL_LOGGER.warning(f"No establishment found for keyword: {keyword}.")
+            UTIL_LOGGER.warning(f"No establishment found for keyword: {SEARCH_REQUEST}.")
     except Exception as e:
-        UTIL_LOGGER.error(f"Error processing keyword: {keyword}: {e}")
+        UTIL_LOGGER.error(f"Error processing keyword: {SEARCH_REQUEST}: {e}")
 
     # Update old trees with new ones
     old_trees.update(trees)
@@ -175,24 +169,20 @@ async def build_and_parse_tree(
 
     return old_trees
 
-
 async def main() -> None:
     """Main function to orchestrate tree building and parsing."""
-    address: str = SELECTED_ADDRESS  # NOTE: SEE _utils/_config.py
-    keyword: str = SEARCH_REQUEST    # NOTE: SEE _utils/_config.py
-    establishment_type: str = ESTABLISHMENT_TYPES  # NOTE: SEE _utils/_config.py
+    address: str = SELECTED_ADDRESS  # NOTE: Refer to _config.py
+    keyword: str = SEARCH_REQUEST    # NOTE: Refer to _config.py
+    establishment_type: str = ESTABLISHMENT_TYPES  # NOTE: Refer to _config.py
 
     # Load existing trees
     old_trees = await load_old_trees()
 
     # Build and parse trees
-    updated_trees = await build_and_parse_tree(
-        keyword, address, establishment_type, LOOKUP_RADIUS, old_trees
-    )
+    updated_trees = await build_and_parse_tree(old_trees)
 
     # Save updated trees
     await save_trees(updated_trees)
-
 
 if __name__ == "__main__":
     try:

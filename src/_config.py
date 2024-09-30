@@ -21,8 +21,8 @@ Sections:
 
 # <-----------------------Global Settings--------------------------------->
 MAX_CONCURRENCY = 4  # Maximum number of browser/page instances to use concurrently.
-USE_GET_CACHE = True  # Enable loading from cache when set to True.
-USE_SET_CACHE = True  # Enable saving to cache when set to True.
+USE_GET_CACHE = False  # Enable loading from cache when set to True.
+USE_SET_CACHE = False  # Enable saving to cache when set to True.
 
 # <-----------------------Location Settings--------------------------------->
 SELECTED_ADDRESS = "Houston, Texas"  # Point of Interest (POI) around which to base your search.

@@ -10,9 +10,9 @@ class LocalStorage:
         # Initialize cm_db_manager connection
         try:
             self.db_manager = CustomDBManager(
-                system='***REMOVED***',  # Replace with your system address
-                uid='***REMOVED***',           # Replace with your username
-                pwd='***REMOVED***',           # Replace with your password
+                system=os.getenv("DB_HOST_IP"),  # Replace with your system address
+                uid=os.getenv("DB_USER_ID"),           # Replace with your username
+                pwd=os.getenv("DB_USER_PW"),           # Replace with your password
                 library='Affogato',        # Replace with your library/schema
                 table_name=db_name,
                 logg=UTIL_LOGGER

@@ -10,6 +10,7 @@ import pandas as pd
 import sqlite3, json
 from tqdm.asyncio import tqdm
 from urllib.parse import urlparse, urlunparse, urlencode, parse_qsl, urljoin, urlsplit
+from fake_useragent import UserAgent
 from datetime import datetime, timezone
 from sklearn.metrics.pairwise import cosine_similarity
 from collections import defaultdict, OrderedDict
@@ -19,6 +20,8 @@ from typing import List, Optional, Dict, Any, Tuple
 
 import logging
 from logging.handlers import RotatingFileHandler
+
+
 
 # --------------------- Logging Configuration ---------------------
 
@@ -111,3 +114,15 @@ def normalize_url(url: str) -> str:
     query = urlencode(sorted(parse_qsl(parsed.query)))
     normalized = urlunparse((scheme, netloc, path, '', query, ''))
     return normalized
+
+
+def get_anonymous_headers():
+    headers = {
+        "User-Agent": f"{UserAgent().random} (compatible; u-evol-guy@proton.me)",
+        "Accept": "*/*",  # Accept everything
+        "Accept-Language": "en-US,en;q=0.9",  # Accept language preference
+        "Accept-Encoding": "*",  # Support compression
+        # "DNT": "1",  # Do not track preference
+        # "Connection": "close",  # No keep-alive
+    }
+    return headers

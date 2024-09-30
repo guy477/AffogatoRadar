@@ -233,7 +233,7 @@ Contributions are welcome! Please follow these steps:
 
 ## Comments
 
-This entire readme was generated using a single prompt in Cursor (IDE) using OpenAI's o1-mini model and it LGTM. The future is here, folks.
+This entire readme was generated with a single prompt in Cursor (IDE) using OpenAI's o1-mini model and it LGTM. The future is here, folks.
 
 ---
 
