@@ -9,3 +9,5 @@ src/_utils/__pycache__/*
 src/_db_helper.py
 src/_testing.py
 logging/*
+.DS_Store
+.gitignore
